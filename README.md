@@ -16,7 +16,7 @@ zna za JavaFX.
 - **auto-reconnect** kad strim pukne: 2s, 4s, 8s, 15s, pa svakih 30s
 - **fade out** ~2s pa stop, i momentalni stop
 - **naziv pesme** koja ide: iz ICY metapodataka strima, a za stanice koje ih ne
-  salju dugme PREPOZNAJ (AcoustID, besplatno)
+  salju dugme PREPOZNAJ (shazamio, besplatno)
 - mute pored VOL; fade out; sekcije Domace (Pop/Rock/Folk/Ex-Yu), Zanrovi,
   Bez reklama, Omiljene, Sakrivene
 - **grupe omiljenih** (Pauza, Zagrevanje...): desni klik na karticu u omiljenima
@@ -34,23 +34,14 @@ ne trosi slusalacko mesto na manjim stanicama.
 Za stanice koje naziv uopste ne salju (OK radio, Naxi, Pink, 202...) postoji
 dugme **PREPOZNAJ** u donjem baru.
 
-| servis | cena | radi na radiju? |
-|---|---|---|
-| `shazam` | besplatno | da - najtacnije od probanog, ali vidi upozorenje |
-| `audd` (podrazumevano) | 300 zahteva besplatno pri registraciji, pa $5/mesec za 1.000 | da, radjeno bas za to |
-| `acoustid` | besplatno | **ne** - vidi merenje ispod |
-
-### servis=shazam
-
-Ide preko biblioteke [shazamio](https://github.com/shazamio/ShazamIO), u zasebnom
-Python procesu - isto kao sto HUB zove yt-dlp i ffmpeg. Skripta snimi 12 sekundi
-strima i vrati izvodjaca i naslov.
+Prepoznaje se preko biblioteke [shazamio](https://github.com/shazamio/ShazamIO),
+u zasebnom Python procesu - isto kao sto HUB zove yt-dlp i ffmpeg. Skripta snimi
+12 sekundi strima i vrati izvodjaca i naslov.
 
 **Koristi Shazamov nezvanicni API.** To krsi njihove uslove koriscenja i puca kad
-promene protokol. Zato nije podrazumevano i ne ide u instaler koji se deli dalje
-- za licnu upotrebu je to tvoja odluka.
+promene protokol - za licnu upotrebu je to tvoja odluka, ne za deljenje dalje.
 
-Mereно, u istom trenutku sa onim sto javlja sam strim:
+Mereno, u istom trenutku sa onim sto javlja sam strim:
 
 | stanica | ICY kaze | Shazam kaze |
 |---|---|---|
@@ -66,35 +57,21 @@ python3 -m venv .venv-shazam
 ```
 
 ```properties
-prepoznavanje.servis=shazam
+# ~/.config/KvizRadio/kvizradio.properties, odnosno %APPDATA%\KvizRadio
 prepoznavanje.python=/putanja/do/.venv-shazam/bin/python
 ```
+
+Prazno `prepoznavanje.python` znaci `python3` (Linux) odnosno `python` (Windows).
 
 Na Windowsu isto: Python 3 sa `shazamio`, plus `ffmpeg` na PATH-u ili
 `ffmpeg.exe` pored `KvizRadio.exe` (aplikacija ga tada sama prosledi skripti).
 Instaler ga ne nosi.
 
-Jedno prepoznavanje je jedan klik na PREPOZNAJ, pa 300 besplatnih zahteva
-izadje na nekoliko desetina kvizova.
-
-```properties
-# kvizradio.properties
-prepoznavanje.servis=acoustid
-prepoznavanje.apiKey=tvoj-kljuc
-```
-
-Bez kljuca dugme objasni gde se uzima, umesto da tiho ne radi. **Kljuc ne ide u
-ovaj repo** - upisuje se u tvoju kopiju konfiguracije
-(`~/.config/KvizRadio/kvizradio.properties`, odnosno `%APPDATA%\KvizRadio`).
-
-Zasto AcoustID nije podrazumevan, iako je besplatan: probano na SomaFM strimu
-gde ICY javlja tacan naziv (`Electric Skychurch - Heaven`), AcoustID vraca
-`{"results": []}` i za 20s i za 60s otiska. On indeksira otiske **celih
-snimaka** i poredi ih po trajanju, pa isecak sa radija nema sta da pogodi. To se
-ne popravlja podesavanjem.
-
-Shazam nema javni API - ono sto kruzi su rekonstruisani klijenti koji krse
-njihove uslove i pucaju kad se protokol promeni.
+Probani su i **AudD** (placen, radjen bas za radio) i **AcoustID** (besplatan) -
+oba izbacena. AcoustID za radio ne radi: na SomaFM strimu gde ICY javlja tacan
+naziv (`Electric Skychurch - Heaven`) vraca `{"results": []}` i za 20s i za 60s
+otiska, jer indeksira otiske **celih snimaka** i poredi ih po trajanju. To se ne
+popravlja podesavanjem.
 
 ## Zahtevi
 
@@ -126,7 +103,6 @@ Ako toga nema, aplikacija se ne pokrece nego javi da VLC nije nadjen.
 Samo ako hoces dugme PREPOZNAJ; naziv pesme iz samog strima radi i bez ovoga.
 
 ```bash
-# servis=shazam - besplatno, vidi upozorenje gore
 sudo apt install python3-venv ffmpeg
 python3 -m venv .venv-shazam
 .venv-shazam/bin/pip install shazamio
@@ -134,23 +110,16 @@ python3 -m venv .venv-shazam
 
 ```properties
 # ~/.config/KvizRadio/kvizradio.properties
-prepoznavanje.servis=shazam
 prepoznavanje.python=/putanja/do/8x8-Media-Player/.venv-shazam/bin/python
 ```
-
-```bash
-# servis=acoustid - mereno da za radio ne radi, ali ako hoces da probas
-sudo apt install libchromaprint-tools
-```
-
-Za `servis=audd` se ne instalira nista - treba samo token.
 
 ### Windows
 
 - JDK 17+ i Maven za build; JDK 21 + WiX 3.x za pravljenje instalera
 - VLC ne mora rucno: instaler nosi svoj libvlc (vidi *Windows instaler*)
-- za `servis=shazam` treba Python 3 sa `shazamio` i `ffmpeg` na PATH-u
-  (ili `ffmpeg.exe` pored `KvizRadio.exe`)
+- za prepoznavanje pesme ne treba nista rucno: instaler nosi svoj Python sa
+  `shazamio`-om i `ffmpeg.exe` (vidi *Windows instaler*). Rucno se postavlja
+  samo ako se pokrece iz razvojnog okruzenja, bez instalera.
 
 ## Pokretanje
 
@@ -179,10 +148,26 @@ build-windows.bat 1.0
 Pokrece se **na Windowsu**, treba JDK 21 (jpackage), Maven i WiX Toolset 3.x.
 Izlaz je `dist\KvizRadio-1.0.exe`.
 
-Instaler nosi i **fpcalc** (Chromaprint) za prepoznavanje pesme, i **svoj VLC** (`libvlc.dll`, `libvlccore.dll`, `plugins\`) u
-podfolderu `vlc`, kao sto HUB nosi yt-dlp i ffmpeg - na tudjem laptopu u kafani
-se ne racuna na to da je VLC instaliran, ni koja je verzija. Skripta ga skine
-sama pri prvom pokretanju.
+Instaler nosi sve sto aplikaciji treba - na tudjem laptopu u kafani se ne racuna
+na to da je bilo sta instalirano, ni koja je verzija. Skripta sve skine sama pri
+prvom pokretanju, u `tools\` (gitignore-ovan):
+
+| sta | gde zavrsi | zasto |
+|---|---|---|
+| **VLC** `libvlc.dll`, `libvlccore.dll`, `plugins\` | `app\vlc\` | sviranje; kao sto HUB nosi yt-dlp |
+| **Python 3.12 embeddable** + `shazamio` | `app\python\` | prepoznavanje pesme bez instaliranog Pythona |
+| **ffmpeg.exe** | `app\` | skripta njime snima isecak strima |
+
+Python je 3.12, ne 3.13: `numpy` i `aiohttp` imaju gotove `cp312` wheel-ove za
+`win_amd64`, pa pip nista ne kompajlira na build masini. Embeddable distribucija
+nema pip i **ne gleda `site-packages`** dok se u `python312._pth` ne odkomentarise
+`import site` - bez toga `import shazamio` puca iako je paket na disku. Build to
+radi sam, pa proveri sa `python.exe -c "import shazamio"` i pukne ako ne prolazi.
+
+Aplikacija bundlovani Python nalazi preko `Alati.nadjiFolder("python")`, isto kao
+VLC. `prepoznavanje.python` u konfiguraciji i dalje pretegne, ako hoces svoj.
+
+Cena je velicina: instaler poraste sa ~100 MB na ~320 MB.
 
 VLC je pinovan na **3.0.x**: vlcj 4 radi sa libvlc 3, sa libvlc 4 ne.
 

@@ -59,6 +59,18 @@ public final class PlayerBar extends StackPane {
     private final Label fade = new Label(Tekst.razmaknuto("FADE OUT"));
     private final Polygon trougao = new Polygon(0, 0, 0, 24, 20, 12);
     private final Rectangle kvadrat = new Rectangle(17, 17);
+    private final HBox pauzaIkona = new HBox(5, new Rectangle(5, 18), new Rectangle(5, 18));
+
+    /** Lokalni rezim: pauza umesto stopa, prethodna/sledeca, traka napretka. */
+    private final StackPane prethodna;
+    private final StackPane sledeca;
+    private final StackPane trakaOkvir = new StackPane();
+    private final Region trakaPopunjeno = new Region();
+    private final Label proteklo = new Label("0:00");
+    private final Label ukupno = new Label("0:00");
+    private HBox redPremotavanja;
+    private boolean lokalno;
+    private boolean nudiPrepoznavanje;
     private final FadeTransition treperenje;
 
     private final Spektar spektar;
@@ -70,7 +82,11 @@ public final class PlayerBar extends StackPane {
     private final Line precrtano = new Line(1, 15, 17, 1);
 
     public PlayerBar(Runnable naDugme, Runnable naFade, Consumer<Integer> naJacinu,
-            Runnable naMute, Runnable naPrepoznavanje, Supplier<float[]> nivoi, int traka) {
+            Runnable naMute, Runnable naPrepoznavanje, Supplier<float[]> nivoi, int traka,
+            Runnable naPrethodnu, Runnable naSledecu, Consumer<Double> naPremotavanje) {
+
+        this.prethodna = maloDugme(false, naPrethodnu);
+        this.sledeca = maloDugme(true, naSledecu);
 
         // deset traka, ne svih dvadeset opsega: mirnije je za oko
         this.spektar = new Spektar(Math.min(10, traka), 24);
@@ -89,10 +105,15 @@ public final class PlayerBar extends StackPane {
         HBox strane = new HBox(sada(naPrepoznavanje), razmak, desno(naFade, naMute));
         strane.setAlignment(Pos.CENTER);
 
-        StackPane dugme = veliko(naDugme);
-        StackPane.setAlignment(dugme, Pos.CENTER);
+        HBox prevoz = new HBox(18, prethodna, veliko(naDugme), sledeca);
+        prevoz.setAlignment(Pos.CENTER);
 
-        getChildren().addAll(strane, dugme);
+        VBox sredina = new VBox(7, prevoz, traka(naPremotavanje));
+        sredina.setAlignment(Pos.CENTER);
+        sredina.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        StackPane.setAlignment(sredina, Pos.CENTER);
+
+        getChildren().addAll(strane, sredina);
 
         jacina.valueProperty().addListener((o, staro, novo) -> {
             int v = (int) Math.round(novo.doubleValue());
@@ -107,6 +128,54 @@ public final class PlayerBar extends StackPane {
         treperenje.setCycleCount(Animation.INDEFINITE);
 
         prikazi(new PlayerService.Status(PlayerService.Stanje.STOP, null, "", null));
+    }
+
+    /**
+     * Lokalni rezim: pesma ima kraj, pa ima i pauzu, premotavanje i susede.
+     * Radio nema nista od toga - tamo ova dugmad nestaju.
+     */
+    public void lokalniRezim(boolean da) {
+        lokalno = da;
+        for (javafx.scene.Node n : new javafx.scene.Node[]{prethodna, sledeca, redPremotavanja}) {
+            n.setVisible(da);
+            n.setManaged(da);
+        }
+        if (!da) {
+            napredak(0, 0);
+        }
+    }
+
+    /** Sta svira sa diska: naslov krupno, izvodjac u redu ispod. */
+    public void prikaziLokalnu(String naslov, String izvodjac, String folder) {
+        ime.setText(naslov);
+        meta.setText(folder == null ? "" : Tekst.razmaknuto(folder.toUpperCase()));
+        Sidebar.postaviKlasu(ime, "prazno", false);
+        inicijali.setText("\u266B");
+        inicijali.setStyle("-fx-text-fill: #D4AF37; -fx-font-size: 15px;");
+        prsten.setStroke(Color.web("#D4AF37", 0.45));
+        pokazi(nota, !izvodjac.isBlank());
+        pokazi(pesmaIzvodjac, !izvodjac.isBlank());
+        pokazi(pesmaNaslov, false);
+        pesmaIzvodjac.setText(izvodjac);
+        pokazi(prepoznaj, nudiPrepoznavanje);
+    }
+
+    /** Dugme PREPOZNAJ i kad se naslov zna - za lokalne fajlove bez taga. */
+    public void ponudiPrepoznavanje(boolean da) {
+        nudiPrepoznavanje = da;
+    }
+
+    /** Pozicija u numeri: traka i vreme. */
+    public void napredak(long protekloMs, long ukupnoMs) {
+        double udeo = ukupnoMs <= 0 ? 0 : Math.max(0, Math.min(1, (double) protekloMs / ukupnoMs));
+        trakaPopunjeno.setPrefWidth(udeo * Math.max(1, trakaOkvir.getWidth()));
+        proteklo.setText(vreme(protekloMs));
+        ukupno.setText(vreme(ukupnoMs));
+    }
+
+    private static String vreme(long ms) {
+        long sek = ms / 1000;
+        return sek / 60 + ":" + String.format("%02d", sek % 60);
     }
 
     public void postaviJacinu(int v) {
@@ -134,8 +203,11 @@ public final class PlayerBar extends StackPane {
 
     public void prikazi(PlayerService.Status st) {
         boolean radi = st.stanje() != PlayerService.Stanje.STOP;
-        postaviStanicu(st.stanica(), radi);
-        prikaziPesmu(st.pesma(), radi);
+        // u lokalnom rezimu naziv postavlja prikaziLokalnu, jer stanice nema
+        if (!lokalno) {
+            postaviStanicu(st.stanica(), radi);
+            prikaziPesmu(st.pesma(), radi);
+        }
 
         String tekst;
         String klasa;
@@ -172,8 +244,11 @@ public final class PlayerBar extends StackPane {
             status.setOpacity(1);
         }
 
-        trougao.setVisible(!radi);
-        kvadrat.setVisible(radi);
+        boolean pauzirano = st.stanje() == PlayerService.Stanje.PAUZA;
+        // u lokalnom rezimu dugme pauzira, u radio rezimu zaustavlja
+        trougao.setVisible(!radi || pauzirano);
+        kvadrat.setVisible(radi && !lokalno);
+        pauzaIkona.setVisible(radi && lokalno && !pauzirano);
         if (st.stanje() == PlayerService.Stanje.SVIRA) {
             osvezavanjeSpektra.play();
         } else {
@@ -205,7 +280,7 @@ public final class PlayerBar extends StackPane {
         pokazi(nota, znamo);
         pokazi(pesmaIzvodjac, znamo && !p.izvodjac().isBlank());
         pokazi(pesmaNaslov, znamo);
-        pokazi(prepoznaj, radi && !znamo);
+        pokazi(prepoznaj, radi && (!znamo || nudiPrepoznavanje));
         if (znamo) {
             pesmaIzvodjac.setText(p.izvodjac() + "  —");
             pesmaNaslov.setText(p.naslov());
@@ -289,7 +364,16 @@ public final class PlayerBar extends StackPane {
         kvadrat.setArcHeight(4);
         kvadrat.setVisible(false);
 
-        StackPane dugme = new StackPane(krug, trougao, kvadrat);
+        pauzaIkona.setAlignment(Pos.CENTER);
+        pauzaIkona.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+        for (javafx.scene.Node n : pauzaIkona.getChildren()) {
+            ((Rectangle) n).setFill(Color.web("#0A0A0A"));
+            ((Rectangle) n).setArcWidth(2);
+            ((Rectangle) n).setArcHeight(2);
+        }
+        pauzaIkona.setVisible(false);
+
+        StackPane dugme = new StackPane(krug, trougao, kvadrat, pauzaIkona);
         dugme.setMaxSize(62, 62);
         dugme.getStyleClass().add("veliko-dugme");
         dugme.setOnMouseClicked(e -> naDugme.run());
@@ -320,6 +404,61 @@ public final class PlayerBar extends StackPane {
         HBox box = new HBox(26, vol, fade);
         box.setAlignment(Pos.CENTER_RIGHT);
         return box;
+    }
+
+    /** Prethodna/sledeca numera; krug sa strelicom i crticom, kao na plejerima. */
+    private StackPane maloDugme(boolean unapred, Runnable akcija) {
+        Circle krug = new Circle(17, Color.web("#141414"));
+        krug.setStroke(Color.web("#D4AF37", 0.4));
+
+        Polygon strelica = unapred
+                ? new Polygon(0, 0, 0, 14, 10, 7)
+                : new Polygon(10, 0, 10, 14, 0, 7);
+        strelica.setFill(Color.web("#D4AF37"));
+        Rectangle crtica = new Rectangle(2.5, 14, Color.web("#D4AF37"));
+        HBox ikona = unapred ? new HBox(2, strelica, crtica) : new HBox(2, crtica, strelica);
+        ikona.setAlignment(Pos.CENTER);
+        ikona.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
+
+        StackPane dugme = new StackPane(krug, ikona);
+        dugme.getStyleClass().add("mute-dugme");
+        dugme.setOnMouseClicked(e -> akcija.run());
+        dugme.setOnMouseEntered(e -> krug.setStroke(Color.web("#F0D060")));
+        dugme.setOnMouseExited(e -> krug.setStroke(Color.web("#D4AF37", 0.4)));
+        dugme.setVisible(false);
+        dugme.setManaged(false);
+        return dugme;
+    }
+
+    /** Traka napretka uz gornju ivicu bara; klik po njoj premotava. */
+    private HBox traka(Consumer<Double> naPremotavanje) {
+        Region pozadina = new Region();
+        pozadina.getStyleClass().add("napredak-pozadina");
+        trakaPopunjeno.getStyleClass().add("napredak-popunjeno");
+        trakaPopunjeno.setMaxWidth(Region.USE_PREF_SIZE);
+        trakaPopunjeno.setPrefWidth(0);
+
+        trakaOkvir.getChildren().addAll(pozadina, trakaPopunjeno);
+        StackPane.setAlignment(trakaPopunjeno, Pos.CENTER_LEFT);
+        trakaOkvir.setMaxHeight(4);
+        trakaOkvir.setPrefHeight(4);
+        trakaOkvir.setCursor(javafx.scene.Cursor.HAND);
+        trakaOkvir.setOnMouseClicked(e -> naPremotavanje.accept(e.getX() / Math.max(1, trakaOkvir.getWidth())));
+        HBox.setHgrow(trakaOkvir, Priority.ALWAYS);
+
+        proteklo.getStyleClass().add("vreme");
+        ukupno.getStyleClass().add("vreme");
+        proteklo.setMinWidth(34);
+        proteklo.setAlignment(Pos.CENTER_RIGHT);
+        ukupno.setMinWidth(34);
+
+        redPremotavanja = new HBox(11, proteklo, trakaOkvir, ukupno);
+        redPremotavanja.setAlignment(Pos.CENTER);
+        redPremotavanja.setPrefWidth(360);
+        redPremotavanja.setMaxWidth(360);
+        redPremotavanja.setVisible(false);
+        redPremotavanja.setManaged(false);
+        return redPremotavanja;
     }
 
     /**

@@ -11,7 +11,7 @@ import java.util.List;
 public record Sekcija(String naziv, String drzava, List<String> tagovi, Vrsta vrsta) {
 
     public enum Vrsta {
-        PRETRAGA, OMILJENE, BEZ_REKLAMA, SAKRIVENE
+        PRETRAGA, OMILJENE, BEZ_REKLAMA, SAKRIVENE, LOKALNO, LOKALNE_PESME, DODAJ_FOLDER
     }
 
     public static Sekcija pretraga(String naziv, String drzava, List<String> tagovi) {
@@ -33,5 +33,10 @@ public record Sekcija(String naziv, String drzava, List<String> tagovi, Vrsta vr
 
     public static Sekcija sakrivene() {
         return new Sekcija("Sakrivene", null, List.of(), Vrsta.SAKRIVENE);
+    }
+
+    /** Muzika sa diska; nema veze sa API-jem, pa nosi samo vrstu. */
+    public static Sekcija lokalno(String naziv, Vrsta vrsta) {
+        return new Sekcija(naziv, null, List.of(), vrsta);
     }
 }
