@@ -54,16 +54,20 @@ public final class PrepoznajService {
 
     private final String servis;
     private final String kljuc;
+    private final String python;
     private final Consumer<String> log;
 
-    public PrepoznajService(String servis, String kljuc, Consumer<String> log) {
+    public PrepoznajService(String servis, String kljuc, String python, Consumer<String> log) {
         this.servis = servis == null || servis.isBlank() ? "audd" : servis.trim().toLowerCase();
         this.kljuc = kljuc == null ? "" : kljuc.trim();
+        this.python = python == null || python.isBlank()
+                ? (Alati.WINDOWS ? "python" : "python3") : python.trim();
         this.log = log == null ? s -> {} : log;
     }
 
+    /** Shazam ne trazi kljuc; ostali ga traze. */
     public boolean podesen() {
-        return !kljuc.isEmpty();
+        return "shazam".equals(servis) || !kljuc.isEmpty();
     }
 
     /**
@@ -74,7 +78,11 @@ public final class PrepoznajService {
         if (!podesen()) {
             throw new Neuspeh(bezKljuca());
         }
-        return "audd".equals(servis) ? prekoAudd(stanica) : prekoAcoustId(stanica);
+        return switch (servis) {
+            case "shazam" -> prekoShazama(stanica);
+            case "acoustid" -> prekoAcoustId(stanica);
+            default -> prekoAudd(stanica);
+        };
     }
 
     private String bezKljuca() {
@@ -88,6 +96,87 @@ public final class PrepoznajService {
                 + "2. Registruj aplikaciju (ime: KvizRadio) i uzmi API key\n"
                 + "3. Upisi u kvizradio.properties:\n"
                 + "   prepoznavanje.apiKey=tvoj-kljuc";
+    }
+
+    // --------------------------------------------------------------- Shazam
+
+    /**
+     * shazamio je Python biblioteka, pa ide kao spoljni proces - isto kao sto
+     * HUB zove yt-dlp i ffmpeg. Skripta snimi isecak strima i ispise jednu JSON
+     * liniju.
+     */
+    private Pesma prekoShazama(Stanica stanica) throws Neuspeh {
+        java.nio.file.Path skripta = skripta();
+        try {
+            ProcessBuilder pb = new ProcessBuilder(python, skripta.toString(), stanica.url());
+            String ffmpeg = Alati.alat("ffmpeg");
+            if (ffmpeg != null) {
+                pb.environment().put("FFMPEG", ffmpeg);
+            }
+            Process proces = pb.start();
+            String izlaz = "";
+            try (BufferedReader citac = new BufferedReader(
+                    new InputStreamReader(proces.getInputStream(), StandardCharsets.UTF_8))) {
+                String linija;
+                while ((linija = citac.readLine()) != null) {
+                    if (linija.startsWith("{")) {
+                        izlaz = linija;
+                    }
+                }
+            }
+            if (!proces.waitFor(120, TimeUnit.SECONDS)) {
+                proces.destroyForcibly();
+                throw new Neuspeh("Prepoznavanje je trajalo predugo.");
+            }
+            if (izlaz.isEmpty()) {
+                String greske = new String(proces.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+                throw new Neuspeh("shazamio nije odgovorio.\n\n"
+                        + (greske.isBlank() ? "Proveri prepoznavanje.python u konfiguraciji."
+                                : greske.trim()));
+            }
+            Object koren = Json.parsiraj(izlaz);
+            String greska = Json.tekst(Json.mapa(koren).get("greska"));
+            if (!greska.isBlank()) {
+                throw new Neuspeh(greska);
+            }
+            String naslov = Json.tekst(Json.mapa(koren).get("naslov"));
+            if (naslov.isBlank()) {
+                throw new Neuspeh("Pesma nije prepoznata.");
+            }
+            return new Pesma(Json.tekst(Json.mapa(koren).get("izvodjac")), naslov, Pesma.PREPOZNATO);
+        } catch (Neuspeh e) {
+            throw e;
+        } catch (java.io.IOException e) {
+            throw new Neuspeh("Ne mogu da pokrenem Python (" + python + ").\n\n"
+                    + "Treba Python 3 sa shazamio i ffmpeg:\n"
+                    + "  python3 -m venv venv && venv/bin/pip install shazamio\n"
+                    + "pa u kvizradio.properties:\n"
+                    + "  prepoznavanje.python=putanja/do/venv/bin/python");
+        } catch (Exception e) {
+            throw new Neuspeh("Prepoznavanje nije uspelo: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Skripta se raspakuje iz aplikacije pri svakoj upotrebi - tako je uvek ona
+     * koju nosi tekuca verzija, a ne zaostala kopija.
+     */
+    private java.nio.file.Path skripta() throws Neuspeh {
+        java.nio.file.Path cilj = Alati.podesavanjaFolder().resolve("shazam-prepoznaj.py");
+        try (java.io.InputStream ulaz = PrepoznajService.class
+                .getResourceAsStream("/its/kvizradio/shazam-prepoznaj.py")) {
+            if (ulaz == null) {
+                throw new Neuspeh("Nedostaje shazam-prepoznaj.py u aplikaciji.");
+            }
+            java.nio.file.Files.createDirectories(cilj.getParent());
+            java.nio.file.Files.copy(ulaz, cilj,
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            return cilj;
+        } catch (Neuspeh e) {
+            throw e;
+        } catch (Exception e) {
+            throw new Neuspeh("Ne mogu da raspakujem skriptu: " + e.getMessage());
+        }
     }
 
     // ------------------------------------------------------------- AcoustID
