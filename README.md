@@ -97,9 +97,59 @@ njihove uslove i pucaju kad se protokol promeni.
 
 ## Zahtevi
 
-- Java 17+
-- Maven
-- **VLC instaliran** (libvlc) - `sudo apt install vlc` odnosno VLC za Windows
+### Linux
+
+Provereno na Ubuntu 24.04. Sve sto treba da player radi:
+
+```bash
+sudo apt install openjdk-21-jdk maven vlc
+```
+
+| paket | zasto |
+|---|---|
+| `openjdk-21-jdk` | projekat se gradi za Javu 17, radi i na 21 |
+| `maven` | build |
+| `vlc` | donosi `libvlc.so.5` i dekodere - vlcj svira preko njega, `javafx.scene.media` ne ume Icecast pouzdano |
+
+`libvlc-dev` ne treba: vlcj trazi po obrascu `libvlc\.so(?:\.\d)*`, sto hvata i
+`libvlc.so.5` koji dolazi uz `vlc`. Provera:
+
+```bash
+ls -l /usr/lib/x86_64-linux-gnu/libvlc.so*
+```
+
+Ako toga nema, aplikacija se ne pokrece nego javi da VLC nije nadjen.
+
+#### Prepoznavanje pesme (opciono)
+
+Samo ako hoces dugme PREPOZNAJ; naziv pesme iz samog strima radi i bez ovoga.
+
+```bash
+# servis=shazam - besplatno, vidi upozorenje gore
+sudo apt install python3-venv ffmpeg
+python3 -m venv .venv-shazam
+.venv-shazam/bin/pip install shazamio
+```
+
+```properties
+# ~/.config/KvizRadio/kvizradio.properties
+prepoznavanje.servis=shazam
+prepoznavanje.python=/putanja/do/8x8-Media-Player/.venv-shazam/bin/python
+```
+
+```bash
+# servis=acoustid - mereno da za radio ne radi, ali ako hoces da probas
+sudo apt install libchromaprint-tools
+```
+
+Za `servis=audd` se ne instalira nista - treba samo token.
+
+### Windows
+
+- JDK 17+ i Maven za build; JDK 21 + WiX 3.x za pravljenje instalera
+- VLC ne mora rucno: instaler nosi svoj libvlc (vidi *Windows instaler*)
+- za `servis=shazam` treba Python 3 sa `shazamio` i `ffmpeg` na PATH-u
+  (ili `ffmpeg.exe` pored `KvizRadio.exe`)
 
 ## Pokretanje
 
