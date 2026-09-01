@@ -19,6 +19,7 @@ zna za JavaFX.
   salju dugme PREPOZNAJ (AcoustID, besplatno)
 - mute pored VOL; fade out; sekcije Domace (Pop/Rock/Folk/Ex-Yu), Zanrovi,
   Bez reklama, Omiljene, Sakrivene
+- **grupe omiljenih** (Pauza, Zagrevanje...): desni klik na karticu u omiljenima
 - precice: `Space` play/stop, `F` fade out, strelice jacina
 
 ## Naziv pesme
@@ -147,6 +148,7 @@ Stoje van instalacije, u `%APPDATA%\KvizRadio` (Windows) odnosno
 | `kvizradio.properties` | levi meni: grupe, stavke, tagovi po stavci |
 | `mreze.json` | mreze bez reklama (Radio Caprice, SomaFM, Radio Paradise...) |
 | `omiljene.json` | omiljene stanice |
+| `omiljene-grupe.json` | koja omiljena stanica ide u koju grupu |
 | `stanje.properties` | jacina i poslednja stanica |
 | `kes/` | odgovori API-ja, vaze 24h |
 

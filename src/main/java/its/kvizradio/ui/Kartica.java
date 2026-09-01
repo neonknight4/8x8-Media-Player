@@ -48,7 +48,7 @@ public final class Kartica extends StackPane {
      */
     public Kartica(Stanica stanica, boolean omiljena, boolean uSakrivenima,
             Consumer<Stanica> naPustanje, Consumer<Stanica> naZvezdu,
-            Consumer<Stanica> naSakrivanje) {
+            Consumer<Stanica> naSakrivanje, Consumer<Stanica> naDesniKlik) {
 
         this.stanica = stanica;
         getStyleClass().add("kartica");
@@ -105,6 +105,11 @@ public final class Kartica extends StackPane {
 
         getChildren().addAll(sadrzaj, zvezda, sakrij, ekvilajzer);
         setOnMouseClicked(e -> naPustanje.accept(stanica));
+        // desni klik: raspored po grupama u omiljenima
+        setOnContextMenuRequested(e -> {
+            e.consume();
+            naDesniKlik.accept(stanica);
+        });
     }
 
     public Stanica stanica() {
