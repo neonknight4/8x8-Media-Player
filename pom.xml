@@ -13,7 +13,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>17</maven.compiler.release>
         <javafx.version>17.0.10</javafx.version>
-        <mainClass>its.kvizradio.KvizRadioApp</mainClass>
+        <mainClass>its.kvizradio.Pokretac</mainClass>
     </properties>
 
     <dependencies>

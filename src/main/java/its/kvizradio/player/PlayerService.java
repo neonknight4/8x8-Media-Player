@@ -69,8 +69,26 @@ public final class PlayerService {
     public PlayerService(Consumer<Status> slusalac, Consumer<String> log) {
         this.slusalac = slusalac == null ? s -> {} : slusalac;
         this.log = log == null ? s -> {} : log;
+        pripremiLibVlc(this.log);
         this.komponenta = new AudioPlayerComponent();
         this.komponenta.mediaPlayer().events().addMediaPlayerEventListener(new Dogadjaji());
+    }
+
+    /**
+     * Instalacija nosi svoj VLC u podfolderu "vlc" (libvlc.dll, libvlccore.dll,
+     * plugins\). vlcj ga nadje preko jna.library.path - jedan od njegovih
+     * provajdera cita bas tu osobinu.
+     *
+     * Ako tog foldera nema (razvoj, Linux), ostaje vlcj-jeva potraga po sistemu.
+     * Isto pravilo kao u HUB-u za yt-dlp i ffmpeg: sto instalacija donese, to se
+     * i koristi, da verzija ne zavisi od toga sta je na masini.
+     */
+    private static void pripremiLibVlc(Consumer<String> log) {
+        java.nio.file.Path vlc = its.kvizradio.Alati.nadjiFolder("vlc");
+        if (vlc != null) {
+            System.setProperty("jna.library.path", vlc.toString());
+            log.accept("libvlc uz aplikaciju: " + vlc);
+        }
     }
 
     // --------------------------------------------------------------- radnje

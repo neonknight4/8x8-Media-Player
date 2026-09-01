@@ -1,3 +1,7 @@
 target/
 nbproject/private/
 *.log
+dist/
+tools/
+vlc-tmp/
+vlc-*.zip

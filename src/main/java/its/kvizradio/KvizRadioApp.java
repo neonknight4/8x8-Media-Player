@@ -77,7 +77,18 @@ public class KvizRadioApp extends Application {
         Properties konf = Podesavanja.konfiguracija();
         limit = Podesavanja.broj(konf, "limit", 40);
 
-        player = new PlayerService(st -> Platform.runLater(() -> osveziStanje(st)), this::zabelezi);
+        try {
+            player = new PlayerService(st -> Platform.runLater(() -> osveziStanje(st)), this::zabelezi);
+        } catch (RuntimeException | UnsatisfiedLinkError e) {
+            // bez libvlc-a nema sta da se pusti; bolje jasna poruka nego stack
+            // trace u konzoli koju na kvizu niko ne gleda
+            zabelezi("ERROR: libvlc nije nadjen (" + e.getMessage() + ")");
+            new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR,
+                    "VLC (libvlc) nije nadjen.\n\nKvizRadio svira preko VLC-a. Instaliraj VLC "
+                    + "za Windows, ili koristi instaler koji ga nosi sa sobom.").showAndWait();
+            Platform.exit();
+            return;
+        }
 
         bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, v -> player.jacina(v));
         sidebar = new Sidebar(this::otvori);
@@ -100,6 +111,7 @@ public class KvizRadioApp extends Application {
         scena.addEventFilter(KeyEvent.KEY_PRESSED, this::precice);
 
         stage.setTitle("KvizRadio " + Alati.verzija());
+        stage.getIcons().addAll(ikone());
         stage.setMinWidth(1000);
         stage.setMinHeight(640);
         stage.setScene(scena);
@@ -391,6 +403,17 @@ public class KvizRadioApp extends Application {
         }
     }
 
+    private static List<javafx.scene.image.Image> ikone() {
+        List<javafx.scene.image.Image> ikone = new ArrayList<>();
+        for (int velicina : new int[]{16, 20, 24, 32, 40, 48, 64, 96, 128, 256}) {
+            var ulaz = KvizRadioApp.class.getResourceAsStream("icons/icon-" + velicina + ".png");
+            if (ulaz != null) {
+                ikone.add(new javafx.scene.image.Image(ulaz));
+            }
+        }
+        return ikone;
+    }
+
     private Stanica poslednjaStanica(Properties stanje) {
         String json = stanje.getProperty("stanica", "");
         if (json.isBlank()) {
@@ -411,9 +434,5 @@ public class KvizRadioApp extends Application {
     private void zabelezi(String poruka) {
         log.add(poruka);
         System.out.println(poruka);
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }

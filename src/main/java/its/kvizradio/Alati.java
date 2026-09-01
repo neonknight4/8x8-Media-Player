@@ -16,6 +16,48 @@ public final class Alati {
     }
 
     /**
+     * Folder instalacije. Kod jpackage launcher setuje jpackage.app-path na
+     * putanju .exe-a; van instalacije padamo na folder jar-a.
+     */
+    public static Path appDir() {
+        String appPath = System.getProperty("jpackage.app-path");
+        if (appPath != null && !appPath.isBlank()) {
+            Path roditelj = Path.of(appPath).getParent();
+            if (roditelj != null) {
+                return roditelj;
+            }
+        }
+        try {
+            var cs = Alati.class.getProtectionDomain().getCodeSource();
+            if (cs != null && "file".equals(cs.getLocation().getProtocol())) {
+                Path p = Path.of(cs.getLocation().toURI());
+                return Files.isDirectory(p) ? p : p.getParent();
+            }
+        } catch (Exception ignored) {
+        }
+        return Path.of(".").toAbsolutePath();
+    }
+
+    /**
+     * Folder koji aplikacija nosi sa sobom (npr. "vlc"). Trazi se u instalaciji,
+     * u njenom "app" podfolderu, pa navise - jpackage smesta --input sadrzaj
+     * pored .exe-a, a u razvoju je isti folder projekta.
+     */
+    public static Path nadjiFolder(String ime) {
+        Path d = appDir();
+        for (int i = 0; i < 3 && d != null; i++) {
+            for (Path kandidat : new Path[]{d.resolve(ime), d.resolve("app").resolve(ime)}) {
+                if (Files.isDirectory(kandidat)) {
+                    return kandidat;
+                }
+            }
+            d = d.getParent();
+        }
+        Path uRadnom = Path.of(".").toAbsolutePath().resolve(ime);
+        return Files.isDirectory(uRadnom) ? uRadnom : null;
+    }
+
+    /**
      * Folder sa korisnickim podesavanjima, kesom i omiljenima. Van instalacije,
      * jer update instalera brise sve sto je instaler doneo.
      */
