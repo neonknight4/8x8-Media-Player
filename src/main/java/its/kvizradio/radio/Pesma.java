@@ -21,6 +21,20 @@ public record Pesma(String izvodjac, String naslov, String izvor) {
         return new Pesma("", cist, izvor);
     }
 
+    /**
+     * Da li je ono sto je stiglo uopste naziv pesme.
+     *
+     * Deo stanica u to polje gura svoj sajt ili reklamu (Super FM salje
+     * "www.superfm.rs"), a to ne treba prikazati kao pesmu.
+     */
+    public static boolean upotrebljivNaziv(String tekst) {
+        if (tekst == null || tekst.isBlank() || tekst.trim().length() < 3) {
+            return false;
+        }
+        String malo = tekst.toLowerCase();
+        return !malo.contains("www.") && !malo.contains("http://") && !malo.contains("https://");
+    }
+
     public boolean prazna() {
         return naslov == null || naslov.isBlank();
     }

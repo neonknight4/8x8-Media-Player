@@ -362,7 +362,7 @@ public final class PlayerService {
             }
             String sada = meta.get(Meta.NOW_PLAYING);
             String naslovStrima = meta.get(Meta.TITLE);
-            if (sada == null || sada.isBlank()
+            if (!Pesma.upotrebljivNaziv(sada)
                     || sada.equalsIgnoreCase(stanica.ime())
                     || sada.equalsIgnoreCase(naslovStrima)) {
                 return;
