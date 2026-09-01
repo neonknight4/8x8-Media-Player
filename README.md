@@ -16,29 +16,42 @@ zna za JavaFX.
 - **auto-reconnect** kad strim pukne: 2s, 4s, 8s, 15s, pa svakih 30s
 - **fade out** ~2s pa stop, i momentalni stop
 - **naziv pesme** koja ide: iz ICY metapodataka strima, a za stanice koje ih ne
-  salju postoji dugme PREPOZNAJ (mereno na 14 stanica: naziv salje njih pet)
+  salju dugme PREPOZNAJ (AcoustID, besplatno)
 - mute pored VOL; fade out; sekcije Domace (Pop/Rock/Folk/Ex-Yu), Zanrovi,
   Bez reklama, Omiljene, Sakrivene
 - precice: `Space` play/stop, `F` fade out, strelice jacina
 
-## Prepoznavanje pesme
+## Naziv pesme
 
-Vecina strimova ne salje naziv pesme. Za njih dugme **PREPOZNAJ** u donjem baru
-salje URL strima servisu [AudD](https://audd.io), koji sam odatle oslusne
-dvadesetak sekundi i vrati izvodjaca i naslov - aplikacija nista ne snima.
+Prvo se cita sa samog strima, iz ICY metapodataka (`StreamTitle`). To se radi
+sopstvenim zahtevom, ne preko VLC-a: mereno na istim stanicama, vlcj daje naziv
+za 5 od 14, a direktno citanje za 7 od 13 - ukljucujuci SomaFM i SWR3, gde vlcj
+vraca prazno. Cita se jedan blok pa se veza zatvara, na svakih 15 sekundi, da se
+ne trosi slusalacko mesto na manjim stanicama.
 
-Trazi token:
+Za stanice koje naziv uopste ne salju (OK radio, Naxi, Pink, 202...) postoji
+dugme **PREPOZNAJ** u donjem baru.
+
+| servis | cena | kako radi |
+|---|---|---|
+| `acoustid` (podrazumevano) | besplatno | `fpcalc` (Chromaprint) napravi otisak iz 20s strima, AcoustID ga trazi u MusicBrainz bazi |
+| `audd` | placeno posle probe | posalje mu se URL strima, on sam oslusne |
 
 ```properties
 # kvizradio.properties
-prepoznavanje.apiKey=tvoj-token
+prepoznavanje.servis=acoustid
+prepoznavanje.apiKey=tvoj-kljuc
 ```
 
-Bez tokena dugme javi gde se uzima, umesto da tiho ne radi.
+Kljuc za AcoustID: https://acoustid.org/new-application (besplatno, bez kartice).
+Bez kljuca dugme objasni gde se uzima, umesto da tiho ne radi.
+
+Posteno o AcoustID-u: baza je gradjena od **celih snimaka**, pa isecak sa radija
+ne pogadja uvek - narocito za domacu muziku, koje u MusicBrainz-u ima malo. AudD
+je radjen bas za radio i pogadja bolje, ali se placa.
 
 Shazam nema javni API - ono sto kruzi su rekonstruisani klijenti koji krse
-njihove uslove i pucaju kad se protokol promeni. AudD radi isti posao preko
-dogovorenog API-ja.
+njihove uslove i pucaju kad se protokol promeni.
 
 ## Zahtevi
 
@@ -73,7 +86,7 @@ build-windows.bat 1.0
 Pokrece se **na Windowsu**, treba JDK 21 (jpackage), Maven i WiX Toolset 3.x.
 Izlaz je `dist\KvizRadio-1.0.exe`.
 
-Instaler nosi **svoj VLC** (`libvlc.dll`, `libvlccore.dll`, `plugins\`) u
+Instaler nosi i **fpcalc** (Chromaprint) za prepoznavanje pesme, i **svoj VLC** (`libvlc.dll`, `libvlccore.dll`, `plugins\`) u
 podfolderu `vlc`, kao sto HUB nosi yt-dlp i ffmpeg - na tudjem laptopu u kafani
 se ne racuna na to da je VLC instaliran, ni koja je verzija. Skripta ga skine
 sama pri prvom pokretanju.

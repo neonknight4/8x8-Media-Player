@@ -22,6 +22,8 @@ jobs:
       # VLC 3.x, ne 4.x - vlcj 4 radi sa libvlc 3. Pinovano namerno, da novo
       # izdanje VideoLAN-a ne promeni instaler samo od sebe.
       VLC_VERSION: 3.0.23
+      # fpcalc (Chromaprint) pravi otisak zvuka za prepoznavanje pesme
+      FPCALC_VERSION: 1.5.1
 
     steps:
       - uses: actions/checkout@v7
@@ -74,6 +76,15 @@ jobs:
           Copy-Item "$src\libvlccore.dll" tools\vlc\
           Copy-Item "$src\plugins" tools\vlc\ -Recurse
           "libvlc: $((Get-Item tools\vlc\libvlc.dll).Length) bajtova, plugina: $((Get-ChildItem tools\vlc\plugins -Recurse -File).Count)"
+
+      - name: Download fpcalc (Chromaprint)
+        shell: pwsh
+        run: |
+          $zip = "chromaprint-fpcalc-$env:FPCALC_VERSION-windows-x86_64.zip"
+          Invoke-WebRequest -Uri "https://github.com/acoustid/chromaprint/releases/download/v$env:FPCALC_VERSION/$zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath fpcalc-tmp
+          Copy-Item (Get-ChildItem fpcalc-tmp -Recurse -Filter fpcalc.exe | Select-Object -First 1).FullName tools\
+          "fpcalc: $((Get-Item tools\fpcalc.exe).Length) bajtova"
 
       # --win-upgrade-uuid mora ostati ISTI zauvek - po njemu Windows prepoznaje
       # da je ovo ista aplikacija i radi update umesto druge instalacije.

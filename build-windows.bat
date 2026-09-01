@@ -22,6 +22,8 @@ set TOOLS_DIR=tools
 REM VLC 3.x, ne 4.x - vlcj 4 radi sa libvlc 3, na 4 ne. Verzija je pinovana
 REM namerno: instaler ne sme da se promeni sam od sebe kad VideoLAN objavi novo.
 set VLC_VERSION=3.0.23
+REM fpcalc (Chromaprint) pravi otisak zvuka za prepoznavanje pesme
+set FPCALC_VERSION=1.5.1
 set VLC_ZIP=vlc-%VLC_VERSION%-win64.zip
 set VLC_URL=https://get.videolan.org/vlc/%VLC_VERSION%/win64/%VLC_ZIP%
 
@@ -43,6 +45,16 @@ if not exist "%TOOLS_DIR%\vlc\libvlc.dll" (
     REM na sebe, pa se bez tog foldera ne ucitava nijedan dekoder
     xcopy /E /I /Y /Q "vlc-tmp\vlc-%VLC_VERSION%\plugins" "%TOOLS_DIR%\vlc\plugins" >nul || goto :error
     rmdir /S /Q vlc-tmp
+)
+
+echo [2b/4] Checking fpcalc...
+if not exist "%TOOLS_DIR%\fpcalc.exe" (
+    echo   Downloading chromaprint-fpcalc-%FPCALC_VERSION% ...
+    curl -L -o fpcalc.zip https://github.com/acoustid/chromaprint/releases/download/v%FPCALC_VERSION%/chromaprint-fpcalc-%FPCALC_VERSION%-windows-x86_64.zip || goto :error
+    if exist fpcalc-tmp rmdir /S /Q fpcalc-tmp
+    powershell -NoProfile -Command "Expand-Archive -Force 'fpcalc.zip' 'fpcalc-tmp'" || goto :error
+    for /R fpcalc-tmp %%f in (fpcalc.exe) do copy /Y "%%f" "%TOOLS_DIR%\" >nul
+    rmdir /S /Q fpcalc-tmp
 )
 
 echo [3/4] Copying app jar to module path...
