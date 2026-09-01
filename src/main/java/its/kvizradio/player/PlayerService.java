@@ -65,6 +65,7 @@ public final class PlayerService {
     private int pokusaj;
     private ScheduledFuture<?> zakazanoPovezivanje;
     private ScheduledFuture<?> fade;
+    private ScheduledFuture<?> primenaJacine;
 
     public PlayerService(Consumer<Status> slusalac, Consumer<String> log) {
         this.slusalac = slusalac == null ? s -> {} : slusalac;
@@ -98,6 +99,7 @@ public final class PlayerService {
         zeljena = stanica;
         pokusaj = 0;
         otkaziFade();
+        otkaziPrimenuJacine();
         otkaziPovezivanje();
         javi(Stanje.POVEZIVANJE, "povezujem se...");
         radnik.execute(() -> {
@@ -113,6 +115,7 @@ public final class PlayerService {
     public void stop() {
         zeljena = null;
         otkaziFade();
+        otkaziPrimenuJacine();
         otkaziPovezivanje();
         javi(Stanje.STOP, "");
         radnik.execute(() -> komponenta.mediaPlayer().controls().stop());
@@ -127,6 +130,7 @@ public final class PlayerService {
             return;
         }
         otkaziFade();
+        otkaziPrimenuJacine();
         final int pocetna = jacina;
         final int korakMs = 50;
         final int koraka = Math.max(1, trajanjeMs / korakMs);
@@ -170,6 +174,7 @@ public final class PlayerService {
     public void oslobodi() {
         zeljena = null;
         otkaziFade();
+        otkaziPrimenuJacine();
         otkaziPovezivanje();
         radnik.execute(() -> {
             komponenta.mediaPlayer().controls().stop();
@@ -187,6 +192,38 @@ public final class PlayerService {
 
     private void postaviNaPlayer(int procenat) {
         radnik.execute(() -> komponenta.mediaPlayer().audio().setVolume(procenat));
+    }
+
+    /**
+     * Jacina posle pocetka sviranja, upisana onoliko puta koliko treba da se
+     * primi.
+     *
+     * libvlc odbacuje {@code setVolume} dok audio izlaz jos nije napravljen -
+     * merenje: odmah posle {@code play()} procitana jacina je 2 (vrednost iz
+     * vlcrc-a), a ne ono sto smo upisali, pa se ne cuje nista. Cak i upis iz
+     * {@code playing} dogadjaja ume da bude prerani. Zato se pise u razmacima i
+     * proverava citanjem, dok se ne poklopi.
+     *
+     * Ne sme da blokira radnika: na njemu visi i stop, a dugme za tisinu je
+     * jedino koje mora da odgovori odmah.
+     */
+    private synchronized void primeniJacinu() {
+        otkaziPrimenuJacine();
+        final int[] pokusaja = {0};
+        primenaJacine = radnik.scheduleAtFixedRate(() -> {
+            int cilj = jacina;
+            komponenta.mediaPlayer().audio().setVolume(cilj);
+            if (komponenta.mediaPlayer().audio().volume() == cilj || ++pokusaja[0] >= 20) {
+                otkaziPrimenuJacine();
+            }
+        }, 0, 100, TimeUnit.MILLISECONDS);
+    }
+
+    private synchronized void otkaziPrimenuJacine() {
+        if (primenaJacine != null) {
+            primenaJacine.cancel(false);
+            primenaJacine = null;
+        }
     }
 
     private synchronized void otkaziFade() {
@@ -235,7 +272,7 @@ public final class PlayerService {
         @Override
         public void playing(MediaPlayer mediaPlayer) {
             pokusaj = 0;
-            postaviNaPlayer(jacina);
+            primeniJacinu();
             javi(Stanje.SVIRA, "");
         }
 
