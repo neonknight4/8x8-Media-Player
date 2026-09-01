@@ -47,7 +47,7 @@ jobs:
             Write-Error "Verzija '$v' nije u obliku 1 / 1.2 / 1.2.3"
             exit 1
           }
-          echo "verzija=$v" >> $env:GITHUB_OUTPUT
+          echo "verzija=$v" >> ${env:GITHUB_OUTPUT}
           echo "Verzija: $v"
 
       - name: Set up JDK 21
@@ -60,7 +60,7 @@ jobs:
       - name: Install WiX Toolset 3
         run: |
           choco install wixtoolset -y --no-progress
-          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
+          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> ${env:GITHUB_PATH}
 
       - name: Maven build
         run: mvn -B clean package
@@ -68,14 +68,19 @@ jobs:
       # Instalacija nosi svoj libvlc, kao sto HUB nosi yt-dlp i ffmpeg: na tudjem
       # laptopu u kafani se ne racuna na to da je VLC instaliran. plugins\ mora
       # da stoji pored dll-a - libvlc ih trazi relativno u odnosu na sebe.
+      # Vitice oko ${env:...} nisu kozmetika: PowerShell posle $env: cita ime
+      # promenljive dokle god nailazi na dozvoljene znake, a crtica i kosa crta
+      # to jesu. "vlc-$env:VLC_VERSION-win64.zip" se cita kao promenljiva
+      # "VLC_VERSION-win64.zip", koja ne postoji, pa ostane prazno i download
+      # padne na 404.
       - name: Download VLC (libvlc + plugins)
         shell: pwsh
         run: |
-          $zip = "vlc-$env:VLC_VERSION-win64.zip"
-          Invoke-WebRequest -Uri "https://get.videolan.org/vlc/$env:VLC_VERSION/win64/$zip" -OutFile $zip
+          $zip = "vlc-${env:VLC_VERSION}-win64.zip"
+          Invoke-WebRequest -Uri "https://get.videolan.org/vlc/${env:VLC_VERSION}/win64/$zip" -OutFile $zip
           Expand-Archive $zip -DestinationPath vlc-tmp
           New-Item -ItemType Directory -Force -Path tools\vlc | Out-Null
-          $src = "vlc-tmp\vlc-$env:VLC_VERSION"
+          $src = "vlc-tmp\vlc-${env:VLC_VERSION}"
           Copy-Item "$src\libvlc.dll" tools\vlc\
           Copy-Item "$src\libvlccore.dll" tools\vlc\
           Copy-Item "$src\plugins" tools\vlc\ -Recurse
@@ -87,8 +92,8 @@ jobs:
       - name: Bundle Python + shazamio
         shell: pwsh
         run: |
-          $zip = "python-$env:PYTHON_VERSION-embed-amd64.zip"
-          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$env:PYTHON_VERSION/$zip" -OutFile $zip
+          $zip = "python-${env:PYTHON_VERSION}-embed-amd64.zip"
+          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/${env:PYTHON_VERSION}/$zip" -OutFile $zip
           Expand-Archive $zip -DestinationPath tools\python
           Get-ChildItem tools\python\python*._pth | ForEach-Object {
             (Get-Content $_) -replace '^#\s*import site', 'import site' | Set-Content $_
@@ -105,8 +110,8 @@ jobs:
       - name: Download ffmpeg
         shell: pwsh
         run: |
-          $zip = "ffmpeg-$env:FFMPEG_VERSION-essentials_build.zip"
-          Invoke-WebRequest -Uri "https://github.com/GyanD/codexffmpeg/releases/download/$env:FFMPEG_VERSION/$zip" -OutFile $zip
+          $zip = "ffmpeg-${env:FFMPEG_VERSION}-essentials_build.zip"
+          Invoke-WebRequest -Uri "https://github.com/GyanD/codexffmpeg/releases/download/${env:FFMPEG_VERSION}/$zip" -OutFile $zip
           Expand-Archive $zip -DestinationPath ffmpeg-tmp
           Copy-Item (Get-ChildItem ffmpeg-tmp -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName tools\
           "ffmpeg: $((Get-Item tools\ffmpeg.exe).Length) bajtova"
@@ -169,8 +174,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create $tag `
               --title "KvizRadio $v" `
-              --notes "Instaler iz commita $env:GITHUB_SHA. Nosi libvlc $env:VLC_VERSION." `
-              --target $env:GITHUB_SHA
+              --notes "Instaler iz commita ${env:GITHUB_SHA}. Nosi libvlc ${env:VLC_VERSION}." `
+              --target ${env:GITHUB_SHA}
           }
           $exe = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
           gh release upload $tag "$exe" --clobber
