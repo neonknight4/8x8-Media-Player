@@ -57,6 +57,36 @@ public final class Alati {
         return Files.isDirectory(uRadnom) ? uRadnom : null;
     }
 
+    /** Fajl koji aplikacija nosi sa sobom (npr. fpcalc.exe). */
+    public static Path nadjiFajl(String ime) {
+        Path d = appDir();
+        for (int i = 0; i < 3 && d != null; i++) {
+            for (Path kandidat : new Path[]{d.resolve(ime), d.resolve("app").resolve(ime)}) {
+                if (Files.isRegularFile(kandidat)) {
+                    return kandidat;
+                }
+            }
+            d = d.getParent();
+        }
+        Path uRadnom = Path.of(".").toAbsolutePath().resolve(ime);
+        return Files.isRegularFile(uRadnom) ? uRadnom : null;
+    }
+
+    /**
+     * Spoljni alat koji instalacija nosi sa sobom (fpcalc).
+     *
+     * Na Windowsu se NE pada na PATH - isto pravilo kao u HUB-u: koristi se ono
+     * sto je instaler doneo, da verzija ne zavisi od toga sta je na masini.
+     * Van Windowsa (razvoj) ostaje golo ime, pa se uzima iz PATH-a.
+     */
+    public static String alat(String osnovnoIme) {
+        Path uzAplikaciju = nadjiFajl(WINDOWS ? osnovnoIme + ".exe" : osnovnoIme);
+        if (uzAplikaciju != null) {
+            return uzAplikaciju.toString();
+        }
+        return WINDOWS ? null : osnovnoIme;
+    }
+
     /**
      * Folder sa korisnickim podesavanjima, kesom i omiljenima. Van instalacije,
      * jer update instalera brise sve sto je instaler doneo.

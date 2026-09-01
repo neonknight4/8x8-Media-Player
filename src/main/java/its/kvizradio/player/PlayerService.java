@@ -1,5 +1,6 @@
 package its.kvizradio.player;
 
+import its.kvizradio.radio.IcyMeta;
 import its.kvizradio.radio.Pesma;
 import its.kvizradio.radio.Stanica;
 
@@ -73,7 +74,22 @@ public final class PlayerService {
     private ScheduledFuture<?> fade;
     private ScheduledFuture<?> primenaJacine;
     private ScheduledFuture<?> citanjeMeta;
+    private ScheduledFuture<?> citanjeIcy;
     private volatile Pesma pesma;
+
+    private final IcyMeta icy = new IcyMeta();
+
+    /**
+     * Citanje naziva pesme sa strima ide svojom niti, ne radnikovom: zahtev ume
+     * da visi do petnaest sekundi, a na radniku ceka i stop - dugme za tisinu ne
+     * sme da ceka mrezu.
+     */
+    private final ScheduledExecutorService citac
+            = Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "kvizradio-meta");
+                t.setDaemon(true);
+                return t;
+            });
     /** Posle oslobodi() radnik vise ne prima posao; dogadjaji jos umeju da stignu. */
     private volatile boolean ugasen;
 
@@ -223,6 +239,7 @@ public final class PlayerService {
             komponenta.release();
         });
         ugasen = true;
+        citac.shutdownNow();
         radnik.shutdown();
         try {
             radnik.awaitTermination(3, TimeUnit.SECONDS);
@@ -363,6 +380,32 @@ public final class PlayerService {
             citanjeMeta.cancel(false);
             citanjeMeta = null;
         }
+        if (citanjeIcy != null) {
+            citanjeIcy.cancel(true);
+            citanjeIcy = null;
+        }
+    }
+
+    /**
+     * Naziv pesme procitan direktno sa strima. Radi za stanice kod kojih vlcj
+     * vraca prazno, pa ide uz njega, a ne umesto njega.
+     */
+    private synchronized void citajIcy() {
+        if (ugasen) {
+            return;
+        }
+        citanjeIcy = citac.scheduleWithFixedDelay(() -> {
+            Stanica stanica = zeljena;
+            if (stanica == null) {
+                return;
+            }
+            Pesma nova = icy.procitaj(stanica);
+            if (nova != null && !nova.prazna() && !nova.equals(pesma)
+                    && !nova.naslov().equalsIgnoreCase(stanica.ime())) {
+                pesma = nova;
+                javi(stanje, "");
+            }
+        }, 0, 15, TimeUnit.SECONDS);
     }
 
     private final class Dogadjaji extends MediaPlayerEventAdapter {
@@ -372,6 +415,7 @@ public final class PlayerService {
             pokusaj = 0;
             primeniJacinu();
             citajMeta();
+            citajIcy();
             javi(Stanje.SVIRA, "");
         }
 
