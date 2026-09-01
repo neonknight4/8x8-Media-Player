@@ -75,7 +75,8 @@ popravlja podesavanjem.
 
 ### Linux
 
-Provereno na Ubuntu 24.04. Sve sto treba da player radi:
+Provereno na Ubuntu 24.04. Sve sto treba da player radi: (ako gradis iz izvora;
+gotov `.deb` je u *Linux instaler* nize):
 
 ```bash
 sudo apt install openjdk-21-jdk maven vlc
@@ -139,6 +140,37 @@ CLI provera API-ja i zvuka, bez UI-ja:
 java -cp "target/classes:target/libs/*" its.kvizradio.Cli -rs -n 10 -sviraj 20
 java -cp "target/classes:target/libs/*" its.kvizradio.Cli -tag jazz -sviraj 0
 ```
+
+## Linux instaler (.deb)
+
+Pravi ga GitHub Actions (`.github/workflows/linux-installer.yml`), rucno ili na
+tag `v1.1`, isti tag kao Windows instaler - na jednom Release-u stoje oba fajla.
+Instalacija:
+
+```bash
+sudo apt install ./kvizradio_1.1-1_amd64.deb
+```
+
+Aplikacija ide u `/opt/kvizradio`, u meni je stavka **KvizRadio**, iz terminala
+`/opt/kvizradio/bin/KvizRadio` (jpackage ne pravi link u `/usr/bin`). Java se ne
+instalira - `.deb` nosi svoj runtime (~30 MB).
+
+Za razliku od Windows-a, ovde se uz aplikaciju ne pakuje nista:
+
+| sta | odakle | zasto ne u paketu |
+|---|---|---|
+| libvlc | `Depends: vlc` | VLC je u repozitorijumu, vlcj nadje `libvlc.so.5` sam |
+| shazamio | `./postavi-shazam.sh` | PEP 668 trazi venv, a venv ide u home korisnika |
+
+Build se vrti na **ubuntu-24.04**, ne `ubuntu-latest`: jpackage upisuje `Depends`
+sa imenima paketa sa build masine (`libasound2t64`, `libglib2.0-0t64`...). Kad
+GitHub pomeri "latest" na sledece izdanje, imena se promene i paket prestane da
+se instalira na 24.04, a da se u repou nista nije menjalo. Iz istog razloga
+paket gradjen na 24.04 ne mora da prodje na 22.04.
+
+`--add-modules jdk.unsupported` mora: JavaFX-ov Marlin rasterizer trazi
+`sun.misc.Unsafe`, pa se bez tog modula aplikacija digne i pukne na prvom
+crtanju sa `NoClassDefFoundError: sun/misc/Unsafe`.
 
 ## Windows instaler
 

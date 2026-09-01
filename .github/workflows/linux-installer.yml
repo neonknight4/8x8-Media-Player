@@ -1,0 +1,122 @@
+name: Linux instaler (.deb)
+
+on:
+  workflow_dispatch:
+    inputs:
+      verzija:
+        description: 'Verzija (npr. 1.1). Mora biti VECA od instalirane da bi apt update prosao.'
+        required: true
+        default: '1.0'
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    # 24.04 fiksno, ne ubuntu-latest: jpackage upisuje Depends sa imenima paketa
+    # sa build masine (libasound2t64, libglib2.0-0t64...). Kad GitHub pomeri
+    # "latest" na sledece izdanje, imena se promene i .deb prestane da se
+    # instalira na 24.04, a da se u repou nista nije menjalo.
+    runs-on: ubuntu-24.04
+    # Za pravljenje release-a; instaler ide kao release asset, ne kao artifact -
+    # isti razlog kao kod Windows-a: artifact-i trose Actions storage kvotu.
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Verzija iz taga (v1.2 -> 1.2) ili iz rucnog pokretanja. dpkg poredi
+      # verzije pri update-u, pa nova mora biti veca od instalirane.
+      - name: Odredi verziju
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            v="${GITHUB_REF_NAME#v}"
+          else
+            v="${{ github.event.inputs.verzija }}"
+          fi
+          if ! echo "$v" | grep -qE '^[0-9]+(\.[0-9]+){0,2}$'; then
+            echo "Verzija '$v' nije u obliku 1 / 1.2 / 1.2.3" >&2
+            exit 1
+          fi
+          echo "verzija=$v" >> "$GITHUB_OUTPUT"
+          echo "Verzija: $v"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # jpackage za .deb zove fakeroot i dpkg-deb; na runneru jesu, ali se ne
+      # racuna na to - bez fakeroot-a build pukne tek u poslednjem koraku.
+      - name: Alati za pakovanje
+        run: sudo apt-get install -y --no-install-recommends fakeroot dpkg-dev
+
+      - name: Maven build
+        run: mvn -B clean package
+
+      # Za razliku od Windows-a, ovde se nista ne pakuje uz aplikaciju:
+      #   - libvlc dolazi iz sistemskog paketa vlc (Depends ispod), jer na
+      #     Linuxu VLC stoji u repozitorijumu i vlcj nadje libvlc.so.5 sam;
+      #   - shazamio ide u venv preko postavi-shazam.sh (PEP 668), pa Python
+      #     ne moze u .deb kao sto ide u Windows instaler.
+      #
+      # --add-modules:
+      #   jdk.crypto.ec - SunEC nije nicija "requires" nego service provider, pa
+      #     ga jlink ne uvlaci sam. Bez njega runtime nema nijedan ECDHE cipher
+      #     suite i HTTPS ka api.radio-browser.info pukne na handshake_failure.
+      #   jdk.unsupported - JavaFX-ov Marlin rasterizer trazi sun.misc.Unsafe.
+      #     Bez ovog modula aplikacija se digne pa pukne na prvom crtanju:
+      #     "ExceptionInInitializerError: NoClassDefFoundError: sun/misc/Unsafe"
+      #     u com.sun.marlin.OffHeapArray.
+      #
+      # Pakuje se preko classpath-a, ne kao modul: jaudiotagger nema module-info,
+      # a jlink odbija automatske module. Zato --main-jar/--main-class, i zato
+      # Pokretac ne nasledjuje Application.
+      - name: jpackage (.deb)
+        run: |
+          # ime jar-a je uvek KvizRadio-1.0.jar (verzija u pom-u), a --main-jar
+          # trazi tacno ime - pa se prepisuje na stalno
+          cp target/KvizRadio-*.jar target/libs/KvizRadio.jar
+          jpackage \
+            --type deb \
+            --name KvizRadio \
+            --app-version ${{ steps.v.outputs.verzija }} \
+            --linux-package-name kvizradio \
+            --linux-app-category sound \
+            --linux-menu-group "AudioVideo;Player" \
+            --linux-shortcut \
+            --linux-deb-maintainer "mihailo.jankovic@inmind.rs" \
+            --linux-package-deps "vlc" \
+            --icon installer/icon.png \
+            --input target/libs \
+            --main-jar KvizRadio.jar \
+            --main-class its.kvizradio.Pokretac \
+            --add-modules java.base,java.desktop,java.net.http,java.logging,jdk.crypto.ec,jdk.unsupported \
+            --dest dist \
+            --description "Online radio za pab kviz - muzika izmedju rundi" \
+            --copyright "Mihailo Jankovic" \
+            --vendor "Mihailo Jankovic"
+          ls -lh dist
+          dpkg -I dist/*.deb
+
+      # Isti tag kao Windows instaler: na jednom release-u stoje i .exe i .deb.
+      # Ko god od ta dva stigne prvi pravi release, drugi samo doda svoj fajl.
+      - name: Objavi instaler kao Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.v.outputs.verzija }}"
+          tag="v$v"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --title "KvizRadio $v" \
+              --notes "Instaler iz commita $GITHUB_SHA." \
+              --target "$GITHUB_SHA"
+          fi
+          deb=$(ls dist/*.deb | head -1)
+          gh release upload "$tag" "$deb" --clobber
+          echo "Instaler: $(gh release view "$tag" --json url --jq .url)"
