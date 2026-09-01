@@ -99,7 +99,8 @@ public class KvizRadioApp extends Application {
         }
 
         prepoznavanje = new PrepoznajService(konf.getProperty("prepoznavanje.servis", "audd"),
-                konf.getProperty("prepoznavanje.apiKey", ""), this::zabelezi);
+                konf.getProperty("prepoznavanje.apiKey", ""),
+                konf.getProperty("prepoznavanje.python", ""), this::zabelezi);
         bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, this::jacina,
                 this::prebaciPrigusenje, this::prepoznajPesmu);
         sidebar = new Sidebar(this::otvori);

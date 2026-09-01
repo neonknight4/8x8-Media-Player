@@ -6,3 +6,4 @@ tools/
 vlc-tmp/
 vlc-*.zip
 kvizradio.local.properties
+.venv-shazam/

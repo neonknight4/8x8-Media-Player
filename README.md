@@ -34,8 +34,43 @@ dugme **PREPOZNAJ** u donjem baru.
 
 | servis | cena | radi na radiju? |
 |---|---|---|
-| `audd` (podrazumevano) | 300 zahteva besplatno pri registraciji (bez kartice), pa $5/mesec za 1.000 | da, radjeno bas za to |
+| `shazam` | besplatno | da - najtacnije od probanog, ali vidi upozorenje |
+| `audd` (podrazumevano) | 300 zahteva besplatno pri registraciji, pa $5/mesec za 1.000 | da, radjeno bas za to |
 | `acoustid` | besplatno | **ne** - vidi merenje ispod |
+
+### servis=shazam
+
+Ide preko biblioteke [shazamio](https://github.com/shazamio/ShazamIO), u zasebnom
+Python procesu - isto kao sto HUB zove yt-dlp i ffmpeg. Skripta snimi 12 sekundi
+strima i vrati izvodjaca i naslov.
+
+**Koristi Shazamov nezvanicni API.** To krsi njihove uslove koriscenja i puca kad
+promene protokol. Zato nije podrazumevano i ne ide u instaler koji se deli dalje
+- za licnu upotrebu je to tvoja odluka.
+
+Mereно, u istom trenutku sa onim sto javlja sam strim:
+
+| stanica | ICY kaze | Shazam kaze |
+|---|---|---|
+| Cool Radio | Henny - Sava i Dunav | Henny & Breskvica - Sava i Dunav |
+| Naxi Radio | *(ne salje nista)* | Oliver Mandic - Poludecu |
+| Yu Eco | Jelena Rozga - Ljubi me | *(nije prepoznata)* |
+
+Priprema:
+
+```bash
+python3 -m venv .venv-shazam
+.venv-shazam/bin/pip install shazamio
+```
+
+```properties
+prepoznavanje.servis=shazam
+prepoznavanje.python=/putanja/do/.venv-shazam/bin/python
+```
+
+Na Windowsu isto: Python 3 sa `shazamio`, plus `ffmpeg` na PATH-u ili
+`ffmpeg.exe` pored `KvizRadio.exe` (aplikacija ga tada sama prosledi skripti).
+Instaler ga ne nosi.
 
 Jedno prepoznavanje je jedan klik na PREPOZNAJ, pa 300 besplatnih zahteva
 izadje na nekoliko desetina kvizova.
