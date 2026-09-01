@@ -77,8 +77,26 @@ jobs:
         shell: pwsh
         run: |
           $zip = "vlc-${env:VLC_VERSION}-win64.zip"
-          Invoke-WebRequest -Uri "https://get.videolan.org/vlc/${env:VLC_VERSION}/win64/$zip" -OutFile $zip
-          Expand-Archive $zip -DestinationPath vlc-tmp
+          # curl.exe umesto Invoke-WebRequest: IWR na gresku mirror-a zavrsi
+          # praznim "OperationStopped:" i ne kaze ni URL ni HTTP kod. Isti alat
+          # koristi i build-windows.bat.
+          $urlovi = @(
+            "https://get.videolan.org/vlc/${env:VLC_VERSION}/win64/$zip",
+            "https://mirror.kumi.systems/videolan/vlc/${env:VLC_VERSION}/win64/$zip"
+          )
+          foreach ($url in $urlovi) {
+            Write-Host "Preuzimam $url"
+            curl.exe -L --fail --retry 3 --retry-delay 5 -o $zip $url
+            if ($LASTEXITCODE -eq 0) { break }
+            Write-Host "  curl kod $LASTEXITCODE"
+          }
+          if (-not (Test-Path $zip)) { throw "VLC nije preuzet ni sa jednog mirror-a" }
+          $mb = [math]::Round((Get-Item $zip).Length / 1MB, 1)
+          Write-Host "$zip = $mb MB"
+          # ceo win64 zip je oko 76 MB; sve manje je stranica sa greskom,
+          # a Expand-Archive na to pukne bez upotrebljive poruke
+          if ($mb -lt 50) { throw "preuzeto samo $mb MB - nije ceo VLC zip" }
+          Expand-Archive $zip -DestinationPath vlc-tmp -Force
           New-Item -ItemType Directory -Force -Path tools\vlc | Out-Null
           $src = "vlc-tmp\vlc-${env:VLC_VERSION}"
           Copy-Item "$src\libvlc.dll" tools\vlc\
@@ -93,12 +111,14 @@ jobs:
         shell: pwsh
         run: |
           $zip = "python-${env:PYTHON_VERSION}-embed-amd64.zip"
-          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/${env:PYTHON_VERSION}/$zip" -OutFile $zip
-          Expand-Archive $zip -DestinationPath tools\python
+          curl.exe -L --fail --retry 3 --retry-delay 5 -o $zip "https://www.python.org/ftp/python/${env:PYTHON_VERSION}/$zip"
+          if ($LASTEXITCODE -ne 0) { throw "curl pao sa kodom $LASTEXITCODE" }
+          Expand-Archive $zip -DestinationPath tools\python -Force
           Get-ChildItem tools\python\python*._pth | ForEach-Object {
             (Get-Content $_) -replace '^#\s*import site', 'import site' | Set-Content $_
           }
-          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile get-pip.py
+          curl.exe -L --fail --retry 3 --retry-delay 5 -o get-pip.py https://bootstrap.pypa.io/get-pip.py
+          if ($LASTEXITCODE -ne 0) { throw "curl pao sa kodom $LASTEXITCODE" }
           tools\python\python.exe get-pip.py --no-warn-script-location
           tools\python\python.exe -m pip install --no-warn-script-location --only-binary=:all: shazamio
           # provera da paket zaista moze da se ucita iz embeddable Pythona
@@ -111,8 +131,9 @@ jobs:
         shell: pwsh
         run: |
           $zip = "ffmpeg-${env:FFMPEG_VERSION}-essentials_build.zip"
-          Invoke-WebRequest -Uri "https://github.com/GyanD/codexffmpeg/releases/download/${env:FFMPEG_VERSION}/$zip" -OutFile $zip
-          Expand-Archive $zip -DestinationPath ffmpeg-tmp
+          curl.exe -L --fail --retry 3 --retry-delay 5 -o $zip "https://github.com/GyanD/codexffmpeg/releases/download/${env:FFMPEG_VERSION}/$zip"
+          if ($LASTEXITCODE -ne 0) { throw "curl pao sa kodom $LASTEXITCODE" }
+          Expand-Archive $zip -DestinationPath ffmpeg-tmp -Force
           Copy-Item (Get-ChildItem ffmpeg-tmp -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName tools\
           "ffmpeg: $((Get-Item tools\ffmpeg.exe).Length) bajtova"
 
