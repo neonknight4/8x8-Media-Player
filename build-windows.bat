@@ -102,6 +102,10 @@ REM
 REM --add-modules jdk.crypto.ec: SunEC nije nicija "requires" nego service
 REM provider, pa ga jlink ne uvlaci sam. Bez njega runtime nema nijedan ECDHE
 REM cipher suite i HTTPS ka api.radio-browser.info pukne na handshake_failure.
+REM
+REM --add-modules jdk.unsupported: JavaFX-ov Marlin rasterizer trazi
+REM sun.misc.Unsafe. Bez njega se aplikacija digne pa pukne na prvom crtanju -
+REM NoClassDefFoundError: sun/misc/Unsafe u com.sun.marlin.
 if exist dist rmdir /S /Q dist
 jpackage ^
   --type exe ^
@@ -112,7 +116,7 @@ jpackage ^
   --input "target\libs" ^
   --main-jar %JAR_NAME%.jar ^
   --main-class %MAIN_CLASS% ^
-  --add-modules java.base,java.desktop,java.net.http,java.logging,jdk.crypto.ec ^
+  --add-modules java.base,java.desktop,java.net.http,java.logging,jdk.crypto.ec,jdk.unsupported ^
   --dest dist ^
   --win-dir-chooser ^
   --win-menu ^
