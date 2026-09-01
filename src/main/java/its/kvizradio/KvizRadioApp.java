@@ -106,7 +106,8 @@ public class KvizRadioApp extends Application {
                 konf.getProperty("prepoznavanje.apiKey", ""),
                 konf.getProperty("prepoznavanje.python", ""), this::zabelezi);
         bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, this::jacina,
-                this::prebaciPrigusenje, this::prepoznajPesmu);
+                this::prebaciPrigusenje, this::prepoznajPesmu,
+                () -> player.nivoi(), PlayerService.TRAKA);
         sidebar = new Sidebar(this::otvori);
         sidebar.postavi(grupe(konf));
 
@@ -128,7 +129,8 @@ public class KvizRadioApp extends Application {
 
         stage.setTitle("KvizRadio " + Alati.verzija());
         stage.getIcons().addAll(ikone());
-        stage.setMinWidth(1000);
+        // spektar je usao izmedju levog bloka i jacine, pa uzi prozor nema gde
+        stage.setMinWidth(1120);
         stage.setMinHeight(640);
         stage.setScene(scena);
         stage.setOnCloseRequest(e -> {
