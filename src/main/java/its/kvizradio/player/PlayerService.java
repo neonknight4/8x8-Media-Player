@@ -66,6 +66,8 @@ public final class PlayerService {
     private ScheduledFuture<?> zakazanoPovezivanje;
     private ScheduledFuture<?> fade;
     private ScheduledFuture<?> primenaJacine;
+    /** Posle oslobodi() radnik vise ne prima posao; dogadjaji jos umeju da stignu. */
+    private volatile boolean ugasen;
 
     public PlayerService(Consumer<Status> slusalac, Consumer<String> log) {
         this.slusalac = slusalac == null ? s -> {} : slusalac;
@@ -102,7 +104,7 @@ public final class PlayerService {
         otkaziPrimenuJacine();
         otkaziPovezivanje();
         javi(Stanje.POVEZIVANJE, "povezujem se...");
-        radnik.execute(() -> {
+        izvrsi(() -> {
             komponenta.mediaPlayer().controls().stop();
             komponenta.mediaPlayer().media().play(stanica.url(), MREZNI_BAFER);
         });
@@ -118,7 +120,7 @@ public final class PlayerService {
         otkaziPrimenuJacine();
         otkaziPovezivanje();
         javi(Stanje.STOP, "");
-        radnik.execute(() -> komponenta.mediaPlayer().controls().stop());
+        izvrsi(() -> komponenta.mediaPlayer().controls().stop());
     }
 
     /**
@@ -176,10 +178,11 @@ public final class PlayerService {
         otkaziFade();
         otkaziPrimenuJacine();
         otkaziPovezivanje();
-        radnik.execute(() -> {
+        izvrsi(() -> {
             komponenta.mediaPlayer().controls().stop();
             komponenta.release();
         });
+        ugasen = true;
         radnik.shutdown();
         try {
             radnik.awaitTermination(3, TimeUnit.SECONDS);
@@ -190,8 +193,21 @@ public final class PlayerService {
 
     // -------------------------------------------------------------- interno
 
+    /**
+     * Posao za radnika, osim kad se aplikacija gasi.
+     *
+     * Gasenje ide preko controls().stop(), a taj poziv sam izazove "stopped"
+     * dogadjaj - koji bi opet hteo na radnika koji je vec ugasen. Bez ove
+     * provere na izlasku iskoci RejectedExecutionException iz JNA callback-a.
+     */
+    private void izvrsi(Runnable posao) {
+        if (!ugasen) {
+            radnik.execute(posao);
+        }
+    }
+
     private void postaviNaPlayer(int procenat) {
-        radnik.execute(() -> komponenta.mediaPlayer().audio().setVolume(procenat));
+        izvrsi(() -> komponenta.mediaPlayer().audio().setVolume(procenat));
     }
 
     /**
@@ -286,20 +302,20 @@ public final class PlayerService {
 
         @Override
         public void error(MediaPlayer mediaPlayer) {
-            radnik.execute(() -> zakaziPonovo("greska playera"));
+            izvrsi(() -> zakaziPonovo("greska playera"));
         }
 
         @Override
         public void finished(MediaPlayer mediaPlayer) {
             // strim se ne zavrsava sam - ako jeste, server je prekinuo vezu
-            radnik.execute(() -> zakaziPonovo("strim zavrsen"));
+            izvrsi(() -> zakaziPonovo("strim zavrsen"));
         }
 
         @Override
         public void stopped(MediaPlayer mediaPlayer) {
             // stop na nas zahtev vec je obrisao zeljenu stanicu, pa ovo hvata
             // samo prekid koji je dosao spolja
-            radnik.execute(() -> {
+            izvrsi(() -> {
                 if (zeljena != null && stanje != Stanje.POVEZIVANJE) {
                     zakaziPonovo("player zaustavljen");
                 }

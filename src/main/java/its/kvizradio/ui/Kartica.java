@@ -10,6 +10,7 @@ import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -41,8 +42,13 @@ public final class Kartica extends StackPane {
     private final HBox ekvilajzer;
     private Timeline pulsiranje;
 
-    public Kartica(Stanica stanica, boolean omiljena,
-            Consumer<Stanica> naPustanje, Consumer<Stanica> naZvezdu) {
+    /**
+     * @param uSakrivenima kartica se crta u sekciji "Sakrivene" - tada dugme
+     *                     gore levo vraca stanicu u listu umesto da je sklanja
+     */
+    public Kartica(Stanica stanica, boolean omiljena, boolean uSakrivenima,
+            Consumer<Stanica> naPustanje, Consumer<Stanica> naZvezdu,
+            Consumer<Stanica> naSakrivanje) {
 
         this.stanica = stanica;
         getStyleClass().add("kartica");
@@ -77,10 +83,27 @@ public final class Kartica extends StackPane {
 
         ekvilajzer = ekvilajzer();
         ekvilajzer.setVisible(false);
+        // StackPane rasteze decu do njihove max velicine, pa se ovaj HBox
+        // razvuce preko cele kartice i - kad postane vidljiv - proguta klik na
+        // zvezdicu. Ukras je, nema sta da hvata misa.
+        ekvilajzer.setMouseTransparent(true);
         StackPane.setAlignment(ekvilajzer, Pos.BOTTOM_LEFT);
         StackPane.setMargin(ekvilajzer, new Insets(0, 0, 12, 14));
 
-        getChildren().addAll(sadrzaj, zvezda, ekvilajzer);
+        Label sakrij = new Label(uSakrivenima ? "\u21A9" : "\u2715");
+        sakrij.getStyleClass().add("sakrij");
+        sakrij.setTooltip(new Tooltip(uSakrivenima
+                ? "Vrati stanicu u listu"
+                : "Sakrij stanicu iz liste"));
+        sakrij.setOnMouseClicked(e -> {
+            // isto kao kod zvezdice: klik na dugme ne sme da pusti stanicu
+            e.consume();
+            naSakrivanje.accept(stanica);
+        });
+        StackPane.setAlignment(sakrij, Pos.TOP_LEFT);
+        StackPane.setMargin(sakrij, new Insets(6, 0, 0, 8));
+
+        getChildren().addAll(sadrzaj, zvezda, sakrij, ekvilajzer);
         setOnMouseClicked(e -> naPustanje.accept(stanica));
     }
 

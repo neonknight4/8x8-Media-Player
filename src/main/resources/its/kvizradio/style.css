@@ -204,6 +204,18 @@
     -fx-text-fill: #D4AF37;
 }
 
+.sakrij {
+    -fx-font-size: 13px;
+    -fx-text-fill: #3A3833;
+    -fx-cursor: hand;
+    -fx-background-color: transparent;
+    -fx-padding: 4;
+}
+
+.sakrij:hover {
+    -fx-text-fill: #F0D060;
+}
+
 .prazno-znak {
     -fx-font-size: 58px;
     -fx-text-fill: #D4AF37;
