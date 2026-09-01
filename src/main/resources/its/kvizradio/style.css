@@ -268,6 +268,49 @@
     -fx-text-fill: #57544B;
 }
 
+.nota {
+    -fx-font-size: 12px;
+    -fx-text-fill: #8A8578;
+}
+
+/* prepoznata pesma se razlikuje od one koju je javio strim */
+.nota.prepoznato {
+    -fx-text-fill: #D4AF37;
+}
+
+.pesma-izvodjac {
+    -fx-font-size: 12px;
+    -fx-text-fill: #8A8578;
+}
+
+.pesma-naslov {
+    -fx-font-size: 12px;
+    -fx-text-fill: #D4AF37;
+}
+
+.prepoznaj-dugme {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #8A8578;
+    -fx-background-color: transparent;
+    -fx-border-color: #2E2C27;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 3 10 3 10;
+    -fx-cursor: hand;
+}
+
+.prepoznaj-dugme:hover {
+    -fx-border-color: #D4AF37;
+    -fx-text-fill: #D4AF37;
+}
+
+.prepoznaj-dugme:disabled {
+    -fx-opacity: 1.0;
+    -fx-text-fill: #57544B;
+    -fx-cursor: default;
+}
+
 .oznaka {
     -fx-font-size: 10px;
     -fx-text-fill: #8A8578;
