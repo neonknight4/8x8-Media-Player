@@ -58,7 +58,7 @@ public final class IcyMeta {
                         return null;
                     }
                     String naslov = procitajBlok(ulaz);
-                    if (naslov != null && !naslov.isBlank()) {
+                    if (Pesma.upotrebljivNaziv(naslov)) {
                         return Pesma.izNaziva(naslov, Pesma.IZ_STRIMA);
                     }
                 }
