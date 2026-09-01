@@ -23,6 +23,19 @@ zna za JavaFX.
 - **spektar** u donjem baru dok muzika svira - zlatne trake, brojevi iz VLC-a
 - precice: `Space` play/stop, `F` fade out, strelice jacina
 
+## Instalacija
+
+Gotovi instaleri stoje na [Releases](https://github.com/neonknight4/8x8-Media-Player/releases);
+oba fajla pravi GitHub Actions iz istog taga.
+
+| gde | fajl | kako |
+|---|---|---|
+| Windows | `KvizRadio-1.1.exe` | dupli klik; nosi svoj VLC, Python i ffmpeg |
+| Linux (Debian/Ubuntu) | `kvizradio_1.1-1_amd64.deb` | `sudo apt install ./kvizradio_1.1-1_amd64.deb`; trazi sistemski `vlc` |
+
+Java se ne instalira ni u jednom slucaju - instaler nosi svoj runtime. Za build
+iz izvora vidi *Zahtevi*.
+
 ## Naziv pesme
 
 Prvo se cita sa samog strima, iz ICY metapodataka (`StreamTitle`). To se radi
@@ -75,8 +88,8 @@ popravlja podesavanjem.
 
 ### Linux
 
-Provereno na Ubuntu 24.04. Sve sto treba da player radi: (ako gradis iz izvora;
-gotov `.deb` je u *Linux instaler* nize):
+Provereno na Ubuntu 24.04. Ovo treba samo ako gradis iz izvora - gotov `.deb`
+nosi svoj runtime i trazi samo `vlc` (vidi *Linux instaler*).
 
 ```bash
 sudo apt install openjdk-21-jdk maven vlc
@@ -203,6 +216,15 @@ VLC. `prepoznavanje.python` u konfiguraciji i dalje pretegne, ako hoces svoj.
 Cena je velicina: instaler poraste sa ~100 MB na ~320 MB.
 
 VLC je pinovan na **3.0.x**: vlcj 4 radi sa libvlc 3, sa libvlc 4 ne.
+
+`--add-modules jdk.unsupported` mora, isto kao kod `.deb`-a: JavaFX-ov Marlin
+rasterizer trazi `sun.misc.Unsafe`, pa se bez tog modula aplikacija digne i
+pukne na prvom crtanju sa `NoClassDefFoundError: sun/misc/Unsafe`.
+
+U workflow-u sva imena promenljivih idu u vitice - `${env:VLC_VERSION}`, ne
+`$env:VLC_VERSION`. PowerShell posle `$env:` cita ime dokle god nailazi na
+dozvoljene znake, a crtica i kosa crta to jesu: `"vlc-$env:VLC_VERSION-win64.zip"`
+je promenljiva `VLC_VERSION-win64.zip`, koje nema, pa preuzimanje ode na 404.
 
 Isto radi i GitHub Actions (`.github/workflows/windows-installer.yml`), rucno
 ili na tag `v1.1`; instaler ide kao Release asset.
