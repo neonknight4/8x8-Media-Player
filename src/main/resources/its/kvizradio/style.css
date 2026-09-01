@@ -172,6 +172,20 @@
     -fx-border-color: #D4AF37;
 }
 
+.kartica-dodavanje {
+    -fx-background-color: transparent;
+    -fx-background-radius: 14;
+    -fx-border-color: rgba(212,175,55,0.45);
+    -fx-border-radius: 14;
+    -fx-border-style: segments(6, 6) line-cap round;
+    -fx-cursor: hand;
+}
+
+.kartica-dodavanje:hover {
+    -fx-background-color: rgba(212,175,55,0.06);
+    -fx-border-color: #D4AF37;
+}
+
 .kartica-ime {
     -fx-font-size: 15px;
     -fx-text-fill: #F2EFE6;
@@ -331,6 +345,90 @@
     -fx-background-color: transparent;
     -fx-cursor: hand;
     -fx-padding: 0;
+}
+
+.vreme {
+    -fx-font-size: 11px;
+    -fx-text-fill: #8A8578;
+}
+
+.napredak-pozadina {
+    -fx-background-color: #232320;
+    -fx-background-radius: 2;
+}
+
+.napredak-popunjeno {
+    -fx-background-color: #D4AF37;
+    -fx-background-radius: 2;
+}
+
+/* spisak pesama u lokalnom folderu */
+.spisak-zaglavlje {
+    -fx-border-color: transparent transparent rgba(212,175,55,0.12) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.spisak-red {
+    -fx-padding: 12 14 12 14;
+    -fx-border-color: transparent transparent #171717 transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-cursor: hand;
+}
+
+.spisak-red:hover {
+    -fx-background-color: #191917;
+}
+
+.spisak-broj {
+    -fx-font-size: 13px;
+    -fx-text-fill: #57544B;
+}
+
+.spisak-svira {
+    -fx-font-size: 13px;
+    -fx-text-fill: #D4AF37;
+}
+
+.spisak-naslov {
+    -fx-font-size: 15px;
+    -fx-text-fill: #F2EFE6;
+}
+
+.spisak-naslov-svira {
+    -fx-font-size: 15px;
+    -fx-text-fill: #D4AF37;
+}
+
+.spisak-izvodjac {
+    -fx-font-size: 13px;
+    -fx-text-fill: #8A8578;
+}
+
+.pesme-lista {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+}
+
+.pesme-lista .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #F2EFE6;
+    -fx-padding: 8 12 8 12;
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
+}
+
+.pesme-lista .list-cell:hover {
+    -fx-background-color: rgba(212,175,55,0.08);
+}
+
+.pesme-lista .list-cell:selected {
+    -fx-background-color: rgba(212,175,55,0.16);
+    -fx-text-fill: #D4AF37;
+}
+
+.pesma-trajanje {
+    -fx-text-fill: #8A8578;
+    -fx-font-size: 12px;
 }
 
 .mute-dugme {

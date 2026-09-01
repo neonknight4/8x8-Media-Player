@@ -22,8 +22,12 @@ jobs:
       # VLC 3.x, ne 4.x - vlcj 4 radi sa libvlc 3. Pinovano namerno, da novo
       # izdanje VideoLAN-a ne promeni instaler samo od sebe.
       VLC_VERSION: 3.0.23
-      # fpcalc (Chromaprint) pravi otisak zvuka za prepoznavanje pesme
-      FPCALC_VERSION: 1.5.1
+      # Python 3.12 embeddable + shazamio: instaler nosi svoj Python, kao i VLC.
+      # 3.12, ne 3.13 - numpy i aiohttp imaju gotove cp312 wheel-ove za
+      # win_amd64, pa pip nista ne kompajlira u CI-ju.
+      PYTHON_VERSION: 3.12.10
+      # ffmpeg snima isecak strima za shazamio
+      FFMPEG_VERSION: 7.1.1
 
     steps:
       - uses: actions/checkout@v7
@@ -77,14 +81,35 @@ jobs:
           Copy-Item "$src\plugins" tools\vlc\ -Recurse
           "libvlc: $((Get-Item tools\vlc\libvlc.dll).Length) bajtova, plugina: $((Get-ChildItem tools\vlc\plugins -Recurse -File).Count)"
 
-      - name: Download fpcalc (Chromaprint)
+      # Embeddable Python nema pip niti gleda site-packages dok se u ._pth fajlu
+      # ne odkomentarise "import site" - bez toga "import shazamio" puca iako je
+      # paket na disku.
+      - name: Bundle Python + shazamio
         shell: pwsh
         run: |
-          $zip = "chromaprint-fpcalc-$env:FPCALC_VERSION-windows-x86_64.zip"
-          Invoke-WebRequest -Uri "https://github.com/acoustid/chromaprint/releases/download/v$env:FPCALC_VERSION/$zip" -OutFile $zip
-          Expand-Archive $zip -DestinationPath fpcalc-tmp
-          Copy-Item (Get-ChildItem fpcalc-tmp -Recurse -Filter fpcalc.exe | Select-Object -First 1).FullName tools\
-          "fpcalc: $((Get-Item tools\fpcalc.exe).Length) bajtova"
+          $zip = "python-$env:PYTHON_VERSION-embed-amd64.zip"
+          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$env:PYTHON_VERSION/$zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath tools\python
+          Get-ChildItem tools\python\python*._pth | ForEach-Object {
+            (Get-Content $_) -replace '^#\s*import site', 'import site' | Set-Content $_
+          }
+          Invoke-WebRequest -Uri "https://bootstrap.pypa.io/get-pip.py" -OutFile get-pip.py
+          tools\python\python.exe get-pip.py --no-warn-script-location
+          tools\python\python.exe -m pip install --no-warn-script-location --only-binary=:all: shazamio
+          # provera da paket zaista moze da se ucita iz embeddable Pythona
+          tools\python\python.exe -c "import shazamio"
+          "python + shazamio: $([math]::Round((Get-ChildItem tools\python -Recurse -File | Measure-Object Length -Sum).Sum / 1MB)) MB"
+
+      # Skripta zove ffmpeg da snimi isecak strima; Alati.alat("ffmpeg") ga
+      # nalazi pored .exe-a. Iz zipa ide samo ffmpeg.exe - ffplay i ffprobe ne.
+      - name: Download ffmpeg
+        shell: pwsh
+        run: |
+          $zip = "ffmpeg-$env:FFMPEG_VERSION-essentials_build.zip"
+          Invoke-WebRequest -Uri "https://github.com/GyanD/codexffmpeg/releases/download/$env:FFMPEG_VERSION/$zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath ffmpeg-tmp
+          Copy-Item (Get-ChildItem ffmpeg-tmp -Recurse -Filter ffmpeg.exe | Select-Object -First 1).FullName tools\
+          "ffmpeg: $((Get-Item tools\ffmpeg.exe).Length) bajtova"
 
       # --win-upgrade-uuid mora ostati ISTI zauvek - po njemu Windows prepoznaje
       # da je ovo ista aplikacija i radi update umesto druge instalacije.
@@ -103,7 +128,7 @@ jobs:
           # ime jar-a je uvek KvizRadio-1.0.jar (verzija u pom-u), a --main-jar
           # trazi tacno ime - pa se prepisuje na stalno
           Copy-Item (Get-ChildItem target\KvizRadio-*.jar | Select-Object -First 1).FullName target\libs\KvizRadio.jar
-          # sve iz tools ide u isti --input folder: VLC, fpcalc i skripte moraju pored .exe-a
+          # sve iz tools ide u isti --input folder: VLC, Python, ffmpeg i skripte pored .exe-a
           Copy-Item tools\* target\libs\ -Recurse -Force
           jpackage `
             --type exe `

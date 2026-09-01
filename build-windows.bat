@@ -21,8 +21,12 @@ set TOOLS_DIR=tools
 REM VLC 3.x, ne 4.x - vlcj 4 radi sa libvlc 3, na 4 ne. Verzija je pinovana
 REM namerno: instaler ne sme da se promeni sam od sebe kad VideoLAN objavi novo.
 set VLC_VERSION=3.0.23
-REM fpcalc (Chromaprint) pravi otisak zvuka za prepoznavanje pesme
-set FPCALC_VERSION=1.5.1
+REM Python 3.12 embeddable + shazamio: instaler nosi svoj Python, kao i svoj VLC.
+REM 3.12, ne 3.13 - numpy i aiohttp imaju gotove cp312 wheel-ove za win_amd64,
+REM pa pip nista ne kompajlira na build masini.
+set PYTHON_VERSION=3.12.10
+REM ffmpeg snima isecak strima za shazamio
+set FFMPEG_VERSION=7.1.1
 set VLC_ZIP=vlc-%VLC_VERSION%-win64.zip
 set VLC_URL=https://get.videolan.org/vlc/%VLC_VERSION%/win64/%VLC_ZIP%
 
@@ -46,21 +50,45 @@ if not exist "%TOOLS_DIR%\vlc\libvlc.dll" (
     rmdir /S /Q vlc-tmp
 )
 
-echo [2b/4] Checking fpcalc...
-if not exist "%TOOLS_DIR%\fpcalc.exe" (
-    echo   Downloading chromaprint-fpcalc-%FPCALC_VERSION% ...
-    curl -L -o fpcalc.zip https://github.com/acoustid/chromaprint/releases/download/v%FPCALC_VERSION%/chromaprint-fpcalc-%FPCALC_VERSION%-windows-x86_64.zip || goto :error
-    if exist fpcalc-tmp rmdir /S /Q fpcalc-tmp
-    powershell -NoProfile -Command "Expand-Archive -Force 'fpcalc.zip' 'fpcalc-tmp'" || goto :error
-    for /R fpcalc-tmp %%f in (fpcalc.exe) do copy /Y "%%f" "%TOOLS_DIR%\" >nul
-    rmdir /S /Q fpcalc-tmp
+echo [2b/4] Checking bundled Python + shazamio...
+REM Embeddable Python nema pip niti gleda site-packages dok se u ._pth fajlu
+REM ne odkomentarise "import site" - bez toga "import shazamio" puca iako je
+REM paket na disku.
+if not exist "%TOOLS_DIR%\python\python.exe" (
+    echo   Downloading python-%PYTHON_VERSION%-embed-amd64 ...
+    curl -L -o python-embed.zip https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-embed-amd64.zip || goto :error
+    powershell -NoProfile -Command "Expand-Archive -Force 'python-embed.zip' '%TOOLS_DIR%\python'" || goto :error
+    del python-embed.zip
+    powershell -NoProfile -Command "Get-ChildItem '%TOOLS_DIR%\python\python*._pth' | ForEach-Object { (Get-Content $_) -replace '^#\s*import site', 'import site' | Set-Content $_ }" || goto :error
+    curl -L -o get-pip.py https://bootstrap.pypa.io/get-pip.py || goto :error
+    "%TOOLS_DIR%\python\python.exe" get-pip.py --no-warn-script-location || goto :error
+    del get-pip.py
+)
+if not exist "%TOOLS_DIR%\python\Lib\site-packages\shazamio" (
+    echo   Installing shazamio ...
+    "%TOOLS_DIR%\python\python.exe" -m pip install --no-warn-script-location --only-binary=:all: shazamio || goto :error
+)
+REM provera da paket zaista moze da se ucita iz embeddable Pythona
+"%TOOLS_DIR%\python\python.exe" -c "import shazamio" || goto :error
+
+echo [2c/4] Checking ffmpeg...
+REM Skripta zove ffmpeg da snimi isecak strima; Alati.alat("ffmpeg") ga nalazi
+REM pored .exe-a. Iz zipa ide samo ffmpeg.exe - ffplay i ffprobe ne trebaju.
+if not exist "%TOOLS_DIR%\ffmpeg.exe" (
+    echo   Downloading ffmpeg-%FFMPEG_VERSION%-essentials ...
+    curl -L -o ffmpeg.zip https://github.com/GyanD/codexffmpeg/releases/download/%FFMPEG_VERSION%/ffmpeg-%FFMPEG_VERSION%-essentials_build.zip || goto :error
+    if exist ffmpeg-tmp rmdir /S /Q ffmpeg-tmp
+    powershell -NoProfile -Command "Expand-Archive -Force 'ffmpeg.zip' 'ffmpeg-tmp'" || goto :error
+    for /R ffmpeg-tmp %%f in (ffmpeg.exe) do copy /Y "%%f" "%TOOLS_DIR%\" >nul
+    rmdir /S /Q ffmpeg-tmp
+    del ffmpeg.zip
 )
 
 echo [3/4] Collecting jars and bundled tools...
 REM ime jar-a je uvek KvizRadio-1.0.jar (verzija u pom-u), a --main-jar trazi
 REM tacno ime - pa se prepisuje na stalno
 copy /Y "target\%JAR_NAME%-*.jar" "target\libs\%JAR_NAME%.jar" >nul || goto :error
-REM sve iz tools ide u isti --input folder: VLC, fpcalc i skripte moraju pored .exe-a
+REM sve iz tools ide u isti --input folder: VLC, Python, ffmpeg i skripte pored .exe-a
 xcopy /E /I /Y /Q "%TOOLS_DIR%\*" "target\libs\" >nul || goto :error
 
 echo [4/4] jpackage...

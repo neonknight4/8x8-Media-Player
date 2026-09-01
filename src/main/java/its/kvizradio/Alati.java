@@ -57,7 +57,7 @@ public final class Alati {
         return Files.isDirectory(uRadnom) ? uRadnom : null;
     }
 
-    /** Fajl koji aplikacija nosi sa sobom (npr. fpcalc.exe). */
+    /** Fajl koji aplikacija nosi sa sobom (npr. ffmpeg.exe). */
     public static Path nadjiFajl(String ime) {
         Path d = appDir();
         for (int i = 0; i < 3 && d != null; i++) {
@@ -73,7 +73,7 @@ public final class Alati {
     }
 
     /**
-     * Spoljni alat koji instalacija nosi sa sobom (fpcalc).
+     * Spoljni alat koji instalacija nosi sa sobom (ffmpeg).
      *
      * Na Windowsu se NE pada na PATH - isto pravilo kao u HUB-u: koristi se ono
      * sto je instaler doneo, da verzija ne zavisi od toga sta je na masini.
