@@ -49,23 +49,21 @@ Mereno, u istom trenutku sa onim sto javlja sam strim:
 | Naxi Radio | *(ne salje nista)* | Oliver Mandic - Poludecu |
 | Yu Eco | Jelena Rozga - Ljubi me | *(nije prepoznata)* |
 
-Priprema:
+Priprema: na Windowsu nikakva - instaler nosi svoj Python sa `shazamio`-om i
+`ffmpeg`. Na Linuxu jedna komanda:
 
 ```bash
-python3 -m venv .venv-shazam
-.venv-shazam/bin/pip install shazamio
+./postavi-shazam.sh
 ```
 
-```properties
-# ~/.config/KvizRadio/kvizradio.properties, odnosno %APPDATA%\KvizRadio
-prepoznavanje.python=/putanja/do/.venv-shazam/bin/python
-```
+Putanja do Pythona se ne upisuje rucno. Trazi se redom:
 
-Prazno `prepoznavanje.python` znaci `python3` (Linux) odnosno `python` (Windows).
-
-Na Windowsu isto: Python 3 sa `shazamio`, plus `ffmpeg` na PATH-u ili
-`ffmpeg.exe` pored `KvizRadio.exe` (aplikacija ga tada sama prosledi skripti).
-Instaler ga ne nosi.
+| # | gde | ko to pravi |
+|---|---|---|
+| 1 | `prepoznavanje.python` iz konfiguracije | ti, ako hoces svoj |
+| 2 | `python\` u instalaciji | Windows instaler |
+| 3 | `~/.config/KvizRadio/venv/` | `postavi-shazam.sh` |
+| 4 | `python3` / `python` sa PATH-a | sistemski, retko ima shazamio |
 
 Probani su i **AudD** (placen, radjen bas za radio) i **AcoustID** (besplatan) -
 oba izbacena. AcoustID za radio ne radi: na SomaFM strimu gde ICY javlja tacan
@@ -104,14 +102,17 @@ Samo ako hoces dugme PREPOZNAJ; naziv pesme iz samog strima radi i bez ovoga.
 
 ```bash
 sudo apt install python3-venv ffmpeg
-python3 -m venv .venv-shazam
-.venv-shazam/bin/pip install shazamio
+./postavi-shazam.sh
 ```
 
-```properties
-# ~/.config/KvizRadio/kvizradio.properties
-prepoznavanje.python=/putanja/do/8x8-Media-Player/.venv-shazam/bin/python
-```
+U konfiguraciji se **ne upisuje nista**. Skripta pravi venv na dogovorenom mestu
+(`~/.config/KvizRadio/venv`) koje aplikacija sama nadje, isto kao sto na Windowsu
+nadje Python iz instalera. Zavrsava sa `import shazamio`, pa pukne odmah ako
+nesto fali, umesto da dugme tiho ne radi.
+
+Zasto venv a ne sistemski pip: Ubuntu od 24.04 ima `EXTERNALLY-MANAGED`
+(PEP 668), pa `pip install shazamio` van venv-a odbije sa
+`error: externally-managed-environment`.
 
 ### Windows
 
