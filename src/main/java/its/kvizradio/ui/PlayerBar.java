@@ -1,10 +1,12 @@
 package its.kvizradio.ui;
 
 import its.kvizradio.player.PlayerService;
+import its.kvizradio.radio.Pesma;
 import its.kvizradio.radio.Stanica;
 
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
 import javafx.scene.control.Label;
@@ -13,12 +15,13 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Arc;
 import javafx.scene.shape.ArcType;
+import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
@@ -27,37 +30,57 @@ import javafx.util.Duration;
 import java.util.function.Consumer;
 
 /**
- * Donji bar: sta svira, veliko dugme, jacina, fade out.
+ * Donji bar: sta svira, koja pesma ide, veliko dugme, jacina, fade out.
  *
- * Dugme i FADE su jedina dva mesta koja voditelj dira usred kviza, pa su
- * najveci elementi na ekranu i imaju precice (Space, F).
+ * Dugme za pustanje stoji u sredini samog bara, ne u sredini onoga sto pretekne
+ * izmedju levog i desnog bloka - zato je bar StackPane a dugme je preko njega.
+ * Voditelj ga trazi pogledom uvek na istom mestu.
+ *
+ * Treci red levo je naziv pesme: iz metapodataka strima kad ih ima, a kad ih
+ * nema stoji dugme za prepoznavanje.
  */
-public final class PlayerBar extends HBox {
+public final class PlayerBar extends StackPane {
 
     private final Label inicijali = new Label("—");
     private final Circle prsten = new Circle(23);
     private final Label ime = new Label("Nijedna stanica");
     private final Label status = new Label();
     private final Label meta = new Label();
+
+    private final Label nota = new Label("♪");
+    private final Label pesmaIzvodjac = new Label();
+    private final Label pesmaNaslov = new Label();
+    private final Label prepoznaj = new Label(Tekst.razmaknuto("PREPOZNAJ"));
+
     private final Slider jacina = new Slider(0, 100, 70);
     private final Label jacinaBroj = new Label("70");
     private final Label fade = new Label(Tekst.razmaknuto("FADE OUT"));
     private final Polygon trougao = new Polygon(0, 0, 0, 24, 20, 12);
     private final Rectangle kvadrat = new Rectangle(17, 17);
     private final FadeTransition treperenje;
+
     private final Polygon zvucnik = new Polygon(0, 5, 4, 5, 9, 0, 9, 16, 4, 11, 0, 11);
     private final Arc talasBlizi = new Arc(10, 8, 5, 5, -45, 90);
     private final Arc talasDalji = new Arc(10, 8, 8, 8, -45, 90);
     private final Line precrtano = new Line(1, 15, 17, 1);
 
-    public PlayerBar(Runnable naDugme, Runnable naFade, Consumer<Integer> naJacinu, Runnable naMute) {
+    public PlayerBar(Runnable naDugme, Runnable naFade, Consumer<Integer> naJacinu,
+            Runnable naMute, Runnable naPrepoznavanje) {
+
         getStyleClass().add("player-bar");
         setPrefHeight(90);
         setMinHeight(90);
-        setAlignment(Pos.CENTER);
-        setSpacing(28);
+        setPadding(new Insets(0, 32, 0, 32));
 
-        getChildren().addAll(sada(), veliko(naDugme), desno(naFade, naMute));
+        Region razmak = new Region();
+        HBox.setHgrow(razmak, Priority.ALWAYS);
+        HBox strane = new HBox(sada(naPrepoznavanje), razmak, desno(naFade, naMute));
+        strane.setAlignment(Pos.CENTER);
+
+        StackPane dugme = veliko(naDugme);
+        StackPane.setAlignment(dugme, Pos.CENTER);
+
+        getChildren().addAll(strane, dugme);
 
         jacina.valueProperty().addListener((o, staro, novo) -> {
             int v = (int) Math.round(novo.doubleValue());
@@ -71,11 +94,15 @@ public final class PlayerBar extends HBox {
         treperenje.setAutoReverse(true);
         treperenje.setCycleCount(Animation.INDEFINITE);
 
-        prikazi(new PlayerService.Status(PlayerService.Stanje.STOP, null, ""));
+        prikazi(new PlayerService.Status(PlayerService.Stanje.STOP, null, "", null));
     }
 
     public void postaviJacinu(int v) {
         jacina.setValue(v);
+    }
+
+    public int jacina() {
+        return (int) Math.round(jacina.getValue());
     }
 
     /** Ikonica pored VOL: precrtan zvucnik kad je zvuk prigusen. */
@@ -84,10 +111,6 @@ public final class PlayerBar extends HBox {
         talasBlizi.setVisible(!prigusen);
         talasDalji.setVisible(!prigusen);
         precrtano.setVisible(prigusen);
-    }
-
-    public int jacina() {
-        return (int) Math.round(jacina.getValue());
     }
 
     /** Stanica koja je izabrana ali jos ne svira - da bar ne bude prazan po pokretanju. */
@@ -100,6 +123,7 @@ public final class PlayerBar extends HBox {
     public void prikazi(PlayerService.Status st) {
         boolean radi = st.stanje() != PlayerService.Stanje.STOP;
         postaviStanicu(st.stanica(), radi);
+        prikaziPesmu(st.pesma(), radi);
 
         String tekst;
         String klasa;
@@ -142,10 +166,42 @@ public final class PlayerBar extends HBox {
         Sidebar.postaviKlasu(fade, "u-toku", false);
     }
 
+    /** Dok prepoznavanje traje - servisu treba dvadesetak sekundi. */
+    public void prepoznavanjeUToku(boolean traje) {
+        prepoznaj.setText(Tekst.razmaknuto(traje ? "SLUSAM..." : "PREPOZNAJ"));
+        prepoznaj.setDisable(traje);
+    }
+
     /** Fade je u toku - dugme to pokazuje dok jacina pada. */
     public void oznaciFade() {
         fade.setText(Tekst.razmaknuto("FADING..."));
         Sidebar.postaviKlasu(fade, "u-toku", true);
+    }
+
+    /**
+     * Treci red: naziv pesme ako se zna, inace ponuda da se prepozna. Dugme se
+     * ne nudi dok nista ne svira - nema sta da se oslusne.
+     */
+    private void prikaziPesmu(Pesma p, boolean radi) {
+        boolean znamo = p != null && !p.prazna();
+        pokazi(nota, znamo);
+        pokazi(pesmaIzvodjac, znamo && !p.izvodjac().isBlank());
+        pokazi(pesmaNaslov, znamo);
+        pokazi(prepoznaj, radi && !znamo);
+        if (znamo) {
+            pesmaIzvodjac.setText(p.izvodjac() + "  —");
+            pesmaNaslov.setText(p.naslov());
+            Sidebar.postaviKlasu(nota, "prepoznato", Pesma.PREPOZNATO.equals(p.izvor()));
+        }
+    }
+
+    public void prikaziPesmu(Pesma p) {
+        prikaziPesmu(p, true);
+    }
+
+    private static void pokazi(Label l, boolean vidljiv) {
+        l.setVisible(vidljiv);
+        l.setManaged(vidljiv);
     }
 
     private void postaviStanicu(Stanica s, boolean radi) {
@@ -166,30 +222,45 @@ public final class PlayerBar extends HBox {
         return s.bitrate() > 0 ? d + s.bitrate() + " kbps" : d + s.kodek();
     }
 
-    private HBox sada() {
+    private HBox sada(Runnable naPrepoznavanje) {
         prsten.setFill(Color.web("#101010"));
         inicijali.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
         StackPane avatar = new StackPane(prsten, inicijali);
 
         ime.getStyleClass().add("sada-ime");
-        ime.setMaxWidth(210);
+        ime.setMaxWidth(300);
         status.getStyleClass().add("status");
         meta.getStyleClass().add("sada-meta");
 
-        HBox donji = new HBox(8, status, meta);
-        donji.setAlignment(Pos.CENTER_LEFT);
+        HBox stanje = new HBox(8, status, meta);
+        stanje.setAlignment(Pos.CENTER_LEFT);
 
-        VBox tekst = new VBox(5, ime, donji);
+        nota.getStyleClass().add("nota");
+        pesmaIzvodjac.getStyleClass().add("pesma-izvodjac");
+        pesmaNaslov.getStyleClass().add("pesma-naslov");
+        pesmaNaslov.setMaxWidth(300);
+
+        prepoznaj.getStyleClass().add("prepoznaj-dugme");
+        prepoznaj.setTooltip(new Tooltip("Prepoznaj pesmu koja trenutno ide"));
+        prepoznaj.setOnMouseClicked(e -> {
+            if (!prepoznaj.isDisable()) {
+                naPrepoznavanje.run();
+            }
+        });
+
+        HBox pesma = new HBox(6, nota, pesmaIzvodjac, pesmaNaslov, prepoznaj);
+        pesma.setAlignment(Pos.CENTER_LEFT);
+
+        VBox tekst = new VBox(4, ime, stanje, pesma);
         tekst.setAlignment(Pos.CENTER_LEFT);
 
         HBox box = new HBox(14, avatar, tekst);
         box.setAlignment(Pos.CENTER_LEFT);
-        box.setPrefWidth(300);
-        box.setMinWidth(300);
+        box.setMaxWidth(440);
         return box;
     }
 
-    private HBox veliko(Runnable naDugme) {
+    private StackPane veliko(Runnable naDugme) {
         Circle krug = new Circle(31, Color.web("#D4AF37"));
         krug.setEffect(new DropShadow(26, Color.web("#D4AF37", 0.28)));
 
@@ -201,15 +272,12 @@ public final class PlayerBar extends HBox {
         kvadrat.setVisible(false);
 
         StackPane dugme = new StackPane(krug, trougao, kvadrat);
+        dugme.setMaxSize(62, 62);
         dugme.getStyleClass().add("veliko-dugme");
         dugme.setOnMouseClicked(e -> naDugme.run());
         dugme.setOnMouseEntered(e -> krug.setFill(Color.web("#F0D060")));
         dugme.setOnMouseExited(e -> krug.setFill(Color.web("#D4AF37")));
-
-        HBox box = new HBox(dugme);
-        box.setAlignment(Pos.CENTER);
-        HBox.setHgrow(box, Priority.ALWAYS);
-        return box;
+        return dugme;
     }
 
     private HBox desno(Runnable naFade, Runnable naMute) {

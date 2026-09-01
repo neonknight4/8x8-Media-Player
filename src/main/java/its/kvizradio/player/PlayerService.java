@@ -1,7 +1,9 @@
 package its.kvizradio.player;
 
+import its.kvizradio.radio.Pesma;
 import its.kvizradio.radio.Stanica;
 
+import uk.co.caprica.vlcj.media.Meta;
 import uk.co.caprica.vlcj.player.base.MediaPlayer;
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
 import uk.co.caprica.vlcj.player.component.AudioPlayerComponent;
@@ -37,8 +39,11 @@ public final class PlayerService {
         STOP, POVEZIVANJE, SVIRA, GRESKA
     }
 
-    /** Sta se desava sada; {@code stanica} je null samo u stanju STOP. */
-    public record Status(Stanje stanje, Stanica stanica, String poruka) {
+    /**
+     * Sta se desava sada; {@code stanica} je null samo u stanju STOP, a
+     * {@code pesma} kad strim ne salje naziv (vecina ih ne salje).
+     */
+    public record Status(Stanje stanje, Stanica stanica, String poruka, Pesma pesma) {
     }
 
     /** Razmaci izmedju pokusaja povezivanja, u sekundama; posle se ponavlja poslednji. */
@@ -67,6 +72,8 @@ public final class PlayerService {
     private ScheduledFuture<?> zakazanoPovezivanje;
     private ScheduledFuture<?> fade;
     private ScheduledFuture<?> primenaJacine;
+    private ScheduledFuture<?> citanjeMeta;
+    private volatile Pesma pesma;
     /** Posle oslobodi() radnik vise ne prima posao; dogadjaji jos umeju da stignu. */
     private volatile boolean ugasen;
 
@@ -100,6 +107,7 @@ public final class PlayerService {
     /** Pusta stanicu; ako nesto vec svira, prekida se bez fejda. */
     public void pusti(Stanica stanica) {
         zeljena = stanica;
+        pesma = null;
         pokusaj = 0;
         otkaziFade();
         otkaziPrimenuJacine();
@@ -117,8 +125,10 @@ public final class PlayerService {
      */
     public void stop() {
         zeljena = null;
+        pesma = null;
         otkaziFade();
         otkaziPrimenuJacine();
+        otkaziCitanjeMeta();
         otkaziPovezivanje();
         javi(Stanje.STOP, "");
         izvrsi(() -> komponenta.mediaPlayer().controls().stop());
@@ -191,11 +201,22 @@ public final class PlayerService {
         return zeljena;
     }
 
+    public Pesma pesma() {
+        return pesma;
+    }
+
+    /** Naziv koji je stigao spolja (prepoznavanje) - da ga bar prikaze isto. */
+    public void postaviPesmu(Pesma nova) {
+        pesma = nova;
+        javi(stanje, "");
+    }
+
     /** Zove se pri gasenju aplikacije - bez ovoga nativni resursi ostaju. */
     public void oslobodi() {
         zeljena = null;
         otkaziFade();
         otkaziPrimenuJacine();
+        otkaziCitanjeMeta();
         otkaziPovezivanje();
         izvrsi(() -> {
             komponenta.mediaPlayer().controls().stop();
@@ -299,7 +320,49 @@ public final class PlayerService {
 
     private void javi(Stanje novo, String poruka) {
         stanje = novo;
-        slusalac.accept(new Status(novo, zeljena, poruka));
+        slusalac.accept(new Status(novo, zeljena, poruka, pesma));
+    }
+
+    /**
+     * Naziv pesme iz ICY metapodataka strima.
+     *
+     * vlcj nema dogadjaj za promenu metapodataka na plejeru, pa se cita svakih
+     * par sekundi - poziv je lokalan i besplatan.
+     *
+     * Dosta stanica u NOW_PLAYING drzi svoje ime umesto pesme; zato se odbacuje
+     * sve sto je isto kao ime stanice ili kao naslov strima.
+     */
+    private synchronized void citajMeta() {
+        otkaziCitanjeMeta();
+        citanjeMeta = radnik.scheduleAtFixedRate(() -> {
+            Stanica stanica = zeljena;
+            if (stanica == null) {
+                return;
+            }
+            var meta = komponenta.mediaPlayer().media().meta();
+            if (meta == null) {
+                return;
+            }
+            String sada = meta.get(Meta.NOW_PLAYING);
+            String naslovStrima = meta.get(Meta.TITLE);
+            if (sada == null || sada.isBlank()
+                    || sada.equalsIgnoreCase(stanica.ime())
+                    || sada.equalsIgnoreCase(naslovStrima)) {
+                return;
+            }
+            Pesma nova = Pesma.izNaziva(sada, Pesma.IZ_STRIMA);
+            if (!nova.equals(pesma)) {
+                pesma = nova;
+                javi(stanje, "");
+            }
+        }, 1, 3, TimeUnit.SECONDS);
+    }
+
+    private synchronized void otkaziCitanjeMeta() {
+        if (citanjeMeta != null) {
+            citanjeMeta.cancel(false);
+            citanjeMeta = null;
+        }
     }
 
     private final class Dogadjaji extends MediaPlayerEventAdapter {
@@ -308,6 +371,7 @@ public final class PlayerService {
         public void playing(MediaPlayer mediaPlayer) {
             pokusaj = 0;
             primeniJacinu();
+            citajMeta();
             javi(Stanje.SVIRA, "");
         }
 

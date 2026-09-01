@@ -6,6 +6,8 @@ import its.kvizradio.radio.FavoritesStore;
 import its.kvizradio.radio.HiddenStore;
 import its.kvizradio.radio.Meni;
 import its.kvizradio.radio.Odeljak;
+import its.kvizradio.radio.Pesma;
+import its.kvizradio.radio.PrepoznajService;
 import its.kvizradio.radio.RadioBrowserService;
 import its.kvizradio.radio.Sekcija;
 import its.kvizradio.radio.Stanica;
@@ -55,6 +57,7 @@ public class KvizRadioApp extends Application {
     private final BezReklama bezReklama = new BezReklama(this::zabelezi);
 
     private PlayerService player;
+    private PrepoznajService prepoznavanje;
     private Sidebar sidebar;
     private PlayerBar bar;
 
@@ -95,7 +98,9 @@ public class KvizRadioApp extends Application {
             return;
         }
 
-        bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, this::jacina, this::prebaciPrigusenje);
+        prepoznavanje = new PrepoznajService(konf.getProperty("prepoznavanje.apiKey", ""));
+        bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, this::jacina,
+                this::prebaciPrigusenje, this::prepoznajPesmu);
         sidebar = new Sidebar(this::otvori);
         sidebar.postavi(grupe(konf));
 
@@ -373,6 +378,38 @@ public class KvizRadioApp extends Application {
     private void jacina(int procenat) {
         player.jacina(procenat);
         bar.prikaziPrigusenje(player.prigusen());
+    }
+
+    /**
+     * Prepoznavanje pesme za stanice koje naziv ne salju u metapodacima
+     * (mereno: salje ih svaka treca). Ceka se na servis, pa ide van FX niti.
+     */
+    private void prepoznajPesmu() {
+        Stanica sada = player.stanica();
+        if (sada == null) {
+            return;
+        }
+        bar.prepoznavanjeUToku(true);
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return prepoznavanje.prepoznaj(sada);
+            } catch (PrepoznajService.Neuspeh e) {
+                return e;
+            }
+        }).thenAccept(ishod -> Platform.runLater(() -> {
+            bar.prepoznavanjeUToku(false);
+            if (ishod instanceof Pesma p) {
+                zabelezi("Prepoznato: " + p.izvodjac() + " - " + p.naslov());
+                player.postaviPesmu(p);
+            } else {
+                String poruka = ((PrepoznajService.Neuspeh) ishod).getMessage();
+                zabelezi("Prepoznavanje: " + poruka);
+                // show(), ne showAndWait(): obavestenje ne sme da zamrzne FX nit
+                // dok muzika ide - zatvara se kad voditelj stigne
+                new javafx.scene.control.Alert(
+                        javafx.scene.control.Alert.AlertType.INFORMATION, poruka).show();
+            }
+        }));
     }
 
     private void prebaciPrigusenje() {

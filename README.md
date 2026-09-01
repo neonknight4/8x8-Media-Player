@@ -15,8 +15,30 @@ zna za JavaFX.
 - **vlcj** (libvlc) za zvuk - `javafx.scene.media` ne svira Icecast pouzdano
 - **auto-reconnect** kad strim pukne: 2s, 4s, 8s, 15s, pa svakih 30s
 - **fade out** ~2s pa stop, i momentalni stop
-- sekcije: Domace (Pop/Rock/Folk/Ex-Yu), Zanrovi, Bez reklama, Omiljene
+- **naziv pesme** koja ide: iz ICY metapodataka strima, a za stanice koje ih ne
+  salju postoji dugme PREPOZNAJ (mereno na 14 stanica: naziv salje njih pet)
+- mute pored VOL; fade out; sekcije Domace (Pop/Rock/Folk/Ex-Yu), Zanrovi,
+  Bez reklama, Omiljene, Sakrivene
 - precice: `Space` play/stop, `F` fade out, strelice jacina
+
+## Prepoznavanje pesme
+
+Vecina strimova ne salje naziv pesme. Za njih dugme **PREPOZNAJ** u donjem baru
+salje URL strima servisu [AudD](https://audd.io), koji sam odatle oslusne
+dvadesetak sekundi i vrati izvodjaca i naslov - aplikacija nista ne snima.
+
+Trazi token:
+
+```properties
+# kvizradio.properties
+prepoznavanje.apiKey=tvoj-token
+```
+
+Bez tokena dugme javi gde se uzima, umesto da tiho ne radi.
+
+Shazam nema javni API - ono sto kruzi su rekonstruisani klijenti koji krse
+njihove uslove i pucaju kad se protokol promeni. AudD radi isti posao preko
+dogovorenog API-ja.
 
 ## Zahtevi
 
