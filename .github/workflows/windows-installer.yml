@@ -1,0 +1,133 @@
+name: Windows installer
+
+on:
+  workflow_dispatch:
+    inputs:
+      verzija:
+        description: 'Verzija (npr. 1.1). Mora biti VECA od instalirane da bi update prosao.'
+        required: true
+        default: '1.0'
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    # Za pravljenje release-a; instaler ide kao release asset, ne kao artifact.
+    permissions:
+      contents: write
+
+    env:
+      # VLC 3.x, ne 4.x - vlcj 4 radi sa libvlc 3. Pinovano namerno, da novo
+      # izdanje VideoLAN-a ne promeni instaler samo od sebe.
+      VLC_VERSION: 3.0.23
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Verzija iz taga (v1.2 -> 1.2) ili iz rucnog pokretanja.
+      # Windows instaler poredi verzije: nova mora biti veca, inace odbije update.
+      - name: Odredi verziju
+        id: v
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "push") {
+            $v = "${{ github.ref_name }}" -replace '^v',''
+          } else {
+            $v = "${{ github.event.inputs.verzija }}"
+          }
+          if ($v -notmatch '^\d+(\.\d+){0,2}$') {
+            Write-Error "Verzija '$v' nije u obliku 1 / 1.2 / 1.2.3"
+            exit 1
+          }
+          echo "verzija=$v" >> $env:GITHUB_OUTPUT
+          echo "Verzija: $v"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Install WiX Toolset 3
+        run: |
+          choco install wixtoolset -y --no-progress
+          echo "C:\Program Files (x86)\WiX Toolset v3.14\bin" >> $env:GITHUB_PATH
+
+      - name: Maven build
+        run: mvn -B clean package
+
+      # Instalacija nosi svoj libvlc, kao sto HUB nosi yt-dlp i ffmpeg: na tudjem
+      # laptopu u kafani se ne racuna na to da je VLC instaliran. plugins\ mora
+      # da stoji pored dll-a - libvlc ih trazi relativno u odnosu na sebe.
+      - name: Download VLC (libvlc + plugins)
+        shell: pwsh
+        run: |
+          $zip = "vlc-$env:VLC_VERSION-win64.zip"
+          Invoke-WebRequest -Uri "https://get.videolan.org/vlc/$env:VLC_VERSION/win64/$zip" -OutFile $zip
+          Expand-Archive $zip -DestinationPath vlc-tmp
+          New-Item -ItemType Directory -Force -Path tools\vlc | Out-Null
+          $src = "vlc-tmp\vlc-$env:VLC_VERSION"
+          Copy-Item "$src\libvlc.dll" tools\vlc\
+          Copy-Item "$src\libvlccore.dll" tools\vlc\
+          Copy-Item "$src\plugins" tools\vlc\ -Recurse
+          "libvlc: $((Get-Item tools\vlc\libvlc.dll).Length) bajtova, plugina: $((Get-ChildItem tools\vlc\plugins -Recurse -File).Count)"
+
+      # --win-upgrade-uuid mora ostati ISTI zauvek - po njemu Windows prepoznaje
+      # da je ovo ista aplikacija i radi update umesto druge instalacije.
+      #
+      # --add-modules jdk.crypto.ec: SunEC nije nicija "requires" nego service
+      # provider, pa ga jlink ne uvlaci sam. Bez njega runtime nema nijedan
+      # ECDHE cipher suite i HTTPS ka api.radio-browser.info pukne na
+      # handshake_failure.
+      - name: jpackage
+        shell: pwsh
+        run: |
+          Copy-Item target\KvizRadio-*.jar target\libs\
+          # javafx-*.jar bez klasifikatora su prazne ljuske (300 bajtova) pored
+          # pravih -win.jar verzija; na module path-u bi to bio isti modul dvaput
+          Get-ChildItem target\libs\javafx-*.jar |
+            Where-Object { $_.Name -notlike '*-win.jar' } | Remove-Item -Force
+          jpackage `
+            --type exe `
+            --name KvizRadio `
+            --app-version ${{ steps.v.outputs.verzija }} `
+            --win-upgrade-uuid d0cee49b-4869-4ae4-8c95-0778d93cec2b `
+            --icon installer\kvizradio.ico `
+            --module-path target\libs `
+            --module its.kvizradio/its.kvizradio.Pokretac `
+            --add-modules its.kvizradio,jdk.crypto.ec `
+            --input tools `
+            --dest dist `
+            --win-dir-chooser `
+            --win-menu `
+            --win-shortcut `
+            --win-shortcut-prompt `
+            --win-per-user-install `
+            --description "Online radio za pab kviz - muzika izmedju rundi" `
+            --copyright "Mihailo Jankovic" `
+            --vendor "Mihailo Jankovic"
+
+      # ZASTO release a ne artifact: artifact-i trose Actions storage kvotu, koja
+      # se popuni posle dvadesetak build-ova i onda upload pada sa "Artifact
+      # storage quota has been hit". Release asset ne ide u tu kvotu, ostaje
+      # trajno i ima stalan link.
+      - name: Objavi instaler kao Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = "${{ steps.v.outputs.verzija }}"
+          $tag = "v$v"
+          gh release view $tag 2>&1 | Out-Null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag `
+              --title "KvizRadio $v" `
+              --notes "Instaler iz commita $env:GITHUB_SHA. Nosi libvlc $env:VLC_VERSION." `
+              --target $env:GITHUB_SHA
+          }
+          $exe = (Get-ChildItem dist\*.exe | Select-Object -First 1).FullName
+          gh release upload $tag "$exe" --clobber
+          Write-Host "Instaler: $(gh release view $tag --json url --jq .url)"
