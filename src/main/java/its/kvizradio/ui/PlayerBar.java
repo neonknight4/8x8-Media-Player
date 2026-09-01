@@ -6,8 +6,10 @@ import its.kvizradio.radio.Stanica;
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
 import javafx.geometry.Pos;
+import javafx.scene.Group;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
+import javafx.scene.control.Tooltip;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -15,6 +17,9 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Arc;
+import javafx.scene.shape.ArcType;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
@@ -40,15 +45,19 @@ public final class PlayerBar extends HBox {
     private final Polygon trougao = new Polygon(0, 0, 0, 24, 20, 12);
     private final Rectangle kvadrat = new Rectangle(17, 17);
     private final FadeTransition treperenje;
+    private final Polygon zvucnik = new Polygon(0, 5, 4, 5, 9, 0, 9, 16, 4, 11, 0, 11);
+    private final Arc talasBlizi = new Arc(10, 8, 5, 5, -45, 90);
+    private final Arc talasDalji = new Arc(10, 8, 8, 8, -45, 90);
+    private final Line precrtano = new Line(1, 15, 17, 1);
 
-    public PlayerBar(Runnable naDugme, Runnable naFade, Consumer<Integer> naJacinu) {
+    public PlayerBar(Runnable naDugme, Runnable naFade, Consumer<Integer> naJacinu, Runnable naMute) {
         getStyleClass().add("player-bar");
         setPrefHeight(90);
         setMinHeight(90);
         setAlignment(Pos.CENTER);
         setSpacing(28);
 
-        getChildren().addAll(sada(), veliko(naDugme), desno(naFade, naJacinu));
+        getChildren().addAll(sada(), veliko(naDugme), desno(naFade, naMute));
 
         jacina.valueProperty().addListener((o, staro, novo) -> {
             int v = (int) Math.round(novo.doubleValue());
@@ -67,6 +76,14 @@ public final class PlayerBar extends HBox {
 
     public void postaviJacinu(int v) {
         jacina.setValue(v);
+    }
+
+    /** Ikonica pored VOL: precrtan zvucnik kad je zvuk prigusen. */
+    public void prikaziPrigusenje(boolean prigusen) {
+        zvucnik.setFill(Color.web(prigusen ? "#57544B" : "#D4AF37"));
+        talasBlizi.setVisible(!prigusen);
+        talasDalji.setVisible(!prigusen);
+        precrtano.setVisible(prigusen);
     }
 
     public int jacina() {
@@ -195,7 +212,7 @@ public final class PlayerBar extends HBox {
         return box;
     }
 
-    private HBox desno(Runnable naFade, Consumer<Integer> naJacinu) {
+    private HBox desno(Runnable naFade, Runnable naMute) {
         Label oznaka = new Label(Tekst.razmaknuto("VOL"));
         oznaka.getStyleClass().add("oznaka");
 
@@ -204,7 +221,7 @@ public final class PlayerBar extends HBox {
         jacinaBroj.getStyleClass().add("jacina-broj");
         jacinaBroj.setMinWidth(30);
 
-        HBox vol = new HBox(12, oznaka, jacina, jacinaBroj);
+        HBox vol = new HBox(12, mute(naMute), oznaka, jacina, jacinaBroj);
         vol.setAlignment(Pos.CENTER);
 
         fade.getStyleClass().add("fade-dugme");
@@ -217,5 +234,30 @@ public final class PlayerBar extends HBox {
         HBox box = new HBox(26, vol, fade);
         box.setAlignment(Pos.CENTER_RIGHT);
         return box;
+    }
+
+    /**
+     * Dugme za prigusenje. Zvucnik je nacrtan, ne emoji - emoji zvucnika nema u
+     * svakom fontu, a bar mora da izgleda isto i na Windowsu i u razvoju.
+     */
+    private StackPane mute(Runnable naMute) {
+        zvucnik.setFill(Color.web("#D4AF37"));
+        for (Arc talas : new Arc[]{talasBlizi, talasDalji}) {
+            talas.setType(ArcType.OPEN);
+            talas.setFill(null);
+            talas.setStroke(Color.web("#D4AF37"));
+            talas.setStrokeWidth(1.6);
+        }
+        precrtano.setStroke(Color.web("#D4AF37"));
+        precrtano.setStrokeWidth(1.8);
+        precrtano.setVisible(false);
+
+        StackPane dugme = new StackPane(new Group(zvucnik, talasBlizi, talasDalji, precrtano));
+        dugme.setPrefSize(26, 22);
+        dugme.setMinSize(26, 22);
+        dugme.getStyleClass().add("mute-dugme");
+        Tooltip.install(dugme, new Tooltip("Prigusi zvuk"));
+        dugme.setOnMouseClicked(e -> naMute.run());
+        return dugme;
     }
 }
