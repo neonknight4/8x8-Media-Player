@@ -95,7 +95,7 @@ public class KvizRadioApp extends Application {
             return;
         }
 
-        bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, v -> player.jacina(v));
+        bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, this::jacina, this::prebaciPrigusenje);
         sidebar = new Sidebar(this::otvori);
         sidebar.postavi(grupe(konf));
 
@@ -162,6 +162,8 @@ public class KvizRadioApp extends Application {
         zaglavlje.getStyleClass().add("sadrzaj-zaglavlje");
 
         sadrzaj.setPadding(new Insets(26, 40, 34, 40));
+        // klik na praznu povrsinu takodje vraca fokus sa polja za pretragu
+        sadrzaj.setOnMouseClicked(e -> skrol.requestFocus());
         skrol = new ScrollPane(sadrzaj);
         skrol.setFitToWidth(true);
         skrol.getStyleClass().add("mreza");
@@ -205,6 +207,9 @@ public class KvizRadioApp extends Application {
     /** Klik u levom meniju: naslovi se postave odmah, stanice stizu iz pozadine. */
     private void otvori(String grupa, Sekcija sekcija) {
         pretraga.clear();
+        // Space i strelice rade samo kad fokus nije u polju za pretragu, a
+        // posle kucanja tamo i ostane - pa se vraca cim se krene dalje.
+        skrol.requestFocus();
         vrstaPrikaza = sekcija.vrsta();
         lokalniFilter = sekcija.vrsta() != Sekcija.Vrsta.PRETRAGA;
 
@@ -228,6 +233,7 @@ public class KvizRadioApp extends Application {
         mrvica.setText(Tekst.razmaknuto("PRETRAGA"));
         naslov.setText(upit);
         vrstaPrikaza = Sekcija.Vrsta.PRETRAGA;
+        skrol.requestFocus();
         ucitaj(() -> List.of(Odeljak.bezNaslova(api.pretraga(null, null, upit, limit))));
     }
 
@@ -345,6 +351,7 @@ public class KvizRadioApp extends Application {
     // -------------------------------------------------------------- radnje
 
     private void pusti(Stanica s) {
+        skrol.requestFocus();
         izabrana = s;
         player.pusti(s);
         // brojac klikova je API-ju znak da je stanica ziva; ne sme da drzi UI
@@ -360,6 +367,17 @@ public class KvizRadioApp extends Application {
         if (sledeca != null) {
             pusti(sledeca);
         }
+    }
+
+    /** Slajder ili strelice: pomeranje jacine ujedno gasi prigusenje. */
+    private void jacina(int procenat) {
+        player.jacina(procenat);
+        bar.prikaziPrigusenje(player.prigusen());
+    }
+
+    private void prebaciPrigusenje() {
+        player.prigusi(!player.prigusen());
+        bar.prikaziPrigusenje(player.prigusen());
     }
 
     private void fadeOut() {

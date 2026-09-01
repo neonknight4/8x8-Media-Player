@@ -61,6 +61,7 @@ public final class PlayerService {
     /** Stanica koju korisnik hoce da cuje; null znaci "stao je" - i gasi reconnect. */
     private volatile Stanica zeljena;
     private volatile int jacina = 70;
+    private volatile boolean prigusen;
     private volatile Stanje stanje = Stanje.STOP;
     private int pokusaj;
     private ScheduledFuture<?> zakazanoPovezivanje;
@@ -157,7 +158,25 @@ public final class PlayerService {
     /** Jacina 0-100; pamti se i primenjuje ponovo kad sledece pustanje krene. */
     public void jacina(int procenat) {
         jacina = Math.max(0, Math.min(100, procenat));
+        // pomeranje jacine je i znak da se vise ne trazi tisina
+        prigusen = false;
         postaviNaPlayer(jacina);
+    }
+
+    /**
+     * Prigusenje: jacina na nulu, a zapamcena vrednost ostaje - da se jednim
+     * klikom vrati tacno onako kako je bilo.
+     *
+     * Ide preko jacine, ne preko libvlc mute-a: isti put koji vec proverljivo
+     * radi, i slajder ostaje tamo gde ga je voditelj ostavio.
+     */
+    public void prigusi(boolean da) {
+        prigusen = da;
+        postaviNaPlayer(da ? 0 : jacina);
+    }
+
+    public boolean prigusen() {
+        return prigusen;
     }
 
     public int jacina() {
@@ -227,7 +246,7 @@ public final class PlayerService {
         otkaziPrimenuJacine();
         final int[] pokusaja = {0};
         primenaJacine = radnik.scheduleAtFixedRate(() -> {
-            int cilj = jacina;
+            int cilj = prigusen ? 0 : jacina;
             komponenta.mediaPlayer().audio().setVolume(cilj);
             if (komponenta.mediaPlayer().audio().volume() == cilj || ++pokusaja[0] >= 20) {
                 otkaziPrimenuJacine();

@@ -290,6 +290,12 @@
     -fx-padding: 0;
 }
 
+.mute-dugme {
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+}
+
 .fade-dugme {
     -fx-background-color: transparent;
     -fx-background-radius: 8;
