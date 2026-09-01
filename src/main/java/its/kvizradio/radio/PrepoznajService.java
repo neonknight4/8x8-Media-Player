@@ -57,7 +57,7 @@ public final class PrepoznajService {
     private final Consumer<String> log;
 
     public PrepoznajService(String servis, String kljuc, Consumer<String> log) {
-        this.servis = servis == null || servis.isBlank() ? "acoustid" : servis.trim().toLowerCase();
+        this.servis = servis == null || servis.isBlank() ? "audd" : servis.trim().toLowerCase();
         this.kljuc = kljuc == null ? "" : kljuc.trim();
         this.log = log == null ? s -> {} : log;
     }
@@ -78,7 +78,7 @@ public final class PrepoznajService {
     }
 
     private String bezKljuca() {
-        if ("audd".equals(servis)) {
+        if (!"acoustid".equals(servis)) {
             return "Prepoznavanje trazi API kljuc.\n\n"
                     + "Napravi nalog na https://audd.io, pa upisi u kvizradio.properties:\n"
                     + "prepoznavanje.apiKey=tvoj-token";

@@ -32,10 +32,10 @@ ne trosi slusalacko mesto na manjim stanicama.
 Za stanice koje naziv uopste ne salju (OK radio, Naxi, Pink, 202...) postoji
 dugme **PREPOZNAJ** u donjem baru.
 
-| servis | cena | kako radi |
+| servis | cena | radi na radiju? |
 |---|---|---|
-| `acoustid` (podrazumevano) | besplatno | `fpcalc` (Chromaprint) napravi otisak iz 20s strima, AcoustID ga trazi u MusicBrainz bazi |
-| `audd` | placeno posle probe | posalje mu se URL strima, on sam oslusne |
+| `audd` (podrazumevano) | placeno posle probe | da, radjeno bas za to |
+| `acoustid` | besplatno | **ne** - vidi merenje ispod |
 
 ```properties
 # kvizradio.properties
@@ -43,12 +43,15 @@ prepoznavanje.servis=acoustid
 prepoznavanje.apiKey=tvoj-kljuc
 ```
 
-Kljuc za AcoustID: https://acoustid.org/new-application (besplatno, bez kartice).
-Bez kljuca dugme objasni gde se uzima, umesto da tiho ne radi.
+Bez kljuca dugme objasni gde se uzima, umesto da tiho ne radi. **Kljuc ne ide u
+ovaj repo** - upisuje se u tvoju kopiju konfiguracije
+(`~/.config/KvizRadio/kvizradio.properties`, odnosno `%APPDATA%\KvizRadio`).
 
-Posteno o AcoustID-u: baza je gradjena od **celih snimaka**, pa isecak sa radija
-ne pogadja uvek - narocito za domacu muziku, koje u MusicBrainz-u ima malo. AudD
-je radjen bas za radio i pogadja bolje, ali se placa.
+Zasto AcoustID nije podrazumevan, iako je besplatan: probano na SomaFM strimu
+gde ICY javlja tacan naziv (`Electric Skychurch - Heaven`), AcoustID vraca
+`{"results": []}` i za 20s i za 60s otiska. On indeksira otiske **celih
+snimaka** i poredi ih po trajanju, pa isecak sa radija nema sta da pogodi. To se
+ne popravlja podesavanjem.
 
 Shazam nema javni API - ono sto kruzi su rekonstruisani klijenti koji krse
 njihove uslove i pucaju kad se protokol promeni.

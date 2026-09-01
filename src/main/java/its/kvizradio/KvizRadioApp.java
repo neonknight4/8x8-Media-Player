@@ -98,7 +98,7 @@ public class KvizRadioApp extends Application {
             return;
         }
 
-        prepoznavanje = new PrepoznajService(konf.getProperty("prepoznavanje.servis", "acoustid"),
+        prepoznavanje = new PrepoznajService(konf.getProperty("prepoznavanje.servis", "audd"),
                 konf.getProperty("prepoznavanje.apiKey", ""), this::zabelezi);
         bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, this::jacina,
                 this::prebaciPrigusenje, this::prepoznajPesmu);
