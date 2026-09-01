@@ -44,7 +44,11 @@ import java.util.function.Consumer;
 public final class PlayerService {
 
     public enum Stanje {
-        STOP, POVEZIVANJE, SVIRA, GRESKA
+        STOP, POVEZIVANJE, SVIRA, PAUZA, GRESKA
+    }
+
+    /** Gde se stalo u numeri; za radio nema smisla, pa se ni ne javlja. */
+    public record Napredak(long protekloMs, long ukupnoMs) {
     }
 
     /**
@@ -105,6 +109,12 @@ public final class PlayerService {
     private volatile Pesma pesma;
 
     private final IcyMeta icy = new IcyMeta();
+
+    /** Lokalni fajl se ponasa drugacije od strima: ima kraj, pauzu i premotavanje. */
+    private volatile boolean lokalni;
+    private volatile Consumer<Napredak> naNapredak = n -> { };
+    private volatile Runnable naKrajNumere = () -> { };
+    private ScheduledFuture<?> pracenjeNapretka;
 
     /**
      * Citanje naziva pesme sa strima ide svojom niti, ne radnikovom: zahtev ume
@@ -176,10 +186,64 @@ public final class PlayerService {
 
     // --------------------------------------------------------------- radnje
 
+    /** Javlja gde se stiglo u numeri, desetak puta u minuti - dovoljno za traku. */
+    public void postaviSlusaocaNapretka(Consumer<Napredak> slusalac) {
+        this.naNapredak = slusalac == null ? n -> { } : slusalac;
+    }
+
+    /** Zove se kad se numera zavrsi - red sviranja odatle pusta sledecu. */
+    public void postaviKrajNumere(Runnable naKraj) {
+        this.naKrajNumere = naKraj == null ? () -> { } : naKraj;
+    }
+
+    /**
+     * Pusta fajl sa diska.
+     *
+     * Za razliku od strima, kraj fajla je normalan zavrsetak a ne pucanje veze,
+     * pa se ne ide u ponovno povezivanje nego u sledecu numeru.
+     */
+    public void pustiFajl(java.nio.file.Path fajl) {
+        zeljena = null;
+        pesma = null;
+        lokalni = true;
+        pokusaj = 0;
+        otkaziFade();
+        otkaziPrimenuJacine();
+        otkaziCitanjeMeta();
+        otkaziPovezivanje();
+        javi(Stanje.POVEZIVANJE, "");
+        izvrsi(() -> {
+            plejer.controls().stop();
+            plejer.media().play(fajl.toString());
+        });
+    }
+
+    /** Pauza i nastavak; radio nema pauzu, tamo se koristi stop. */
+    public void pauza(boolean pauziraj) {
+        if (!lokalni) {
+            return;
+        }
+        izvrsi(() -> plejer.controls().setPause(pauziraj));
+        javi(pauziraj ? Stanje.PAUZA : Stanje.SVIRA, "");
+    }
+
+    public boolean lokalni() {
+        return lokalni;
+    }
+
+    /** Premotavanje na deo numere, 0..1. */
+    public void premotaj(double udeo) {
+        if (!lokalni) {
+            return;
+        }
+        izvrsi(() -> plejer.controls().setPosition((float) Math.max(0, Math.min(1, udeo))));
+    }
+
     /** Pusta stanicu; ako nesto vec svira, prekida se bez fejda. */
     public void pusti(Stanica stanica) {
         zeljena = stanica;
         pesma = null;
+        lokalni = false;
         pokusaj = 0;
         otkaziFade();
         otkaziPrimenuJacine();
@@ -198,6 +262,7 @@ public final class PlayerService {
     public void stop() {
         zeljena = null;
         pesma = null;
+        lokalni = false;
         otkaziFade();
         otkaziPrimenuJacine();
         otkaziCitanjeMeta();
@@ -475,6 +540,21 @@ public final class PlayerService {
             citanjeIcy.cancel(true);
             citanjeIcy = null;
         }
+        if (pracenjeNapretka != null) {
+            pracenjeNapretka.cancel(false);
+            pracenjeNapretka = null;
+        }
+    }
+
+    /** Pozicija u numeri; vlcj nema dogadjaj za to koji bi bio dovoljno gust. */
+    private synchronized void pratiNapredak() {
+        pracenjeNapretka = radnik.scheduleAtFixedRate(() -> {
+            long ukupno = plejer.status().length();
+            long proteklo = plejer.status().time();
+            if (ukupno > 0 && proteklo >= 0) {
+                naNapredak.accept(new Napredak(proteklo, ukupno));
+            }
+        }, 200, 500, TimeUnit.MILLISECONDS);
     }
 
     /**
@@ -505,8 +585,12 @@ public final class PlayerService {
         public void playing(MediaPlayer mediaPlayer) {
             pokusaj = 0;
             primeniJacinu();
-            citajMeta();
-            citajIcy();
+            if (lokalni) {
+                pratiNapredak();
+            } else {
+                citajMeta();
+                citajIcy();
+            }
             javi(Stanje.SVIRA, "");
         }
 
@@ -525,6 +609,11 @@ public final class PlayerService {
 
         @Override
         public void finished(MediaPlayer mediaPlayer) {
+            if (lokalni) {
+                // fajl se normalno zavrsio - sledeca numera, ne ponovno povezivanje
+                izvrsi(naKrajNumere);
+                return;
+            }
             // strim se ne zavrsava sam - ako jeste, server je prekinuo vezu
             izvrsi(() -> zakaziPonovo("strim zavrsen"));
         }
