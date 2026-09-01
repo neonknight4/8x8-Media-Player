@@ -78,6 +78,8 @@ public class KvizRadioApp extends Application {
     private Sekcija.Vrsta vrstaPrikaza = Sekcija.Vrsta.PRETRAGA;
     private boolean lokalniFilter;
     private Stanica izabrana;
+    /** Stanica za koju prepoznavanje upravo traje; null znaci da ne traje. */
+    private Stanica prepoznajemZa;
     private int limit = 40;
 
     @Override
@@ -358,6 +360,7 @@ public class KvizRadioApp extends Application {
     // -------------------------------------------------------------- radnje
 
     private void pusti(Stanica s) {
+        otkaziPrepoznavanje();
         skrol.requestFocus();
         izabrana = s;
         player.pusti(s);
@@ -391,6 +394,7 @@ public class KvizRadioApp extends Application {
         if (sada == null) {
             return;
         }
+        prepoznajemZa = sada;
         bar.prepoznavanjeUToku(true);
         CompletableFuture.supplyAsync(() -> {
             try {
@@ -399,6 +403,12 @@ public class KvizRadioApp extends Application {
                 return e;
             }
         }).thenAccept(ishod -> Platform.runLater(() -> {
+            // stanica se u medjuvremenu promenila - odgovor se odnosi na ono
+            // sto se vise ne cuje, pa se tiho odbacuje
+            if (prepoznajemZa != sada) {
+                return;
+            }
+            prepoznajemZa = null;
             bar.prepoznavanjeUToku(false);
             if (ishod instanceof Pesma p) {
                 zabelezi("Prepoznato: " + p.izvodjac() + " - " + p.naslov());
@@ -412,6 +422,16 @@ public class KvizRadioApp extends Application {
                         javafx.scene.control.Alert.AlertType.INFORMATION, poruka).show();
             }
         }));
+    }
+
+    /** Promena stanice ili zaustavljanje - osluskivanje vise nema smisla. */
+    private void otkaziPrepoznavanje() {
+        if (prepoznajemZa == null) {
+            return;
+        }
+        prepoznajemZa = null;
+        prepoznavanje.prekini();
+        bar.prepoznavanjeUToku(false);
     }
 
     private void prebaciPrigusenje() {
@@ -456,6 +476,9 @@ public class KvizRadioApp extends Application {
     }
 
     private void osveziStanje(PlayerService.Status st) {
+        if (st.stanje() == PlayerService.Stanje.STOP) {
+            otkaziPrepoznavanje();
+        }
         bar.prikazi(st);
         osveziAktivnuKarticu();
     }
