@@ -52,6 +52,11 @@ public final class PrepoznajService {
             .followRedirects(HttpClient.Redirect.NORMAL)
             .build();
 
+    /** Spoljni proces koji upravo osluskuje - da moze da se prekine. */
+    private volatile Process spoljni;
+    /** Prekid je nas, ne greska - da poruka ne optuzi Python bez razloga. */
+    private volatile boolean prekinut;
+
     private final String servis;
     private final String kljuc;
     private final String python;
@@ -63,6 +68,23 @@ public final class PrepoznajService {
         this.python = python == null || python.isBlank()
                 ? (Alati.WINDOWS ? "python" : "python3") : python.trim();
         this.log = log == null ? s -> {} : log;
+    }
+
+    /**
+     * Prekida osluskivanje u toku.
+     *
+     * Zove se kad voditelj promeni stanicu: rezultat bi se odnosio na ono sto
+     * se vise ne cuje. Bez ovoga bi python i ffmpeg jos desetak sekundi drzali
+     * vezu ka staroj stanici.
+     */
+    public void prekini() {
+        prekinut = true;
+        Process p = spoljni;
+        if (p != null) {
+            // ffmpeg je dete Python procesa: bez ovoga ostane da vuce strim
+            p.descendants().forEach(ProcessHandle::destroyForcibly);
+            p.destroyForcibly();
+        }
     }
 
     /** Shazam ne trazi kljuc; ostali ga traze. */
@@ -78,11 +100,16 @@ public final class PrepoznajService {
         if (!podesen()) {
             throw new Neuspeh(bezKljuca());
         }
-        return switch (servis) {
-            case "shazam" -> prekoShazama(stanica);
-            case "acoustid" -> prekoAcoustId(stanica);
-            default -> prekoAudd(stanica);
-        };
+        prekinut = false;
+        try {
+            return switch (servis) {
+                case "shazam" -> prekoShazama(stanica);
+                case "acoustid" -> prekoAcoustId(stanica);
+                default -> prekoAudd(stanica);
+            };
+        } finally {
+            spoljni = null;
+        }
     }
 
     private String bezKljuca() {
@@ -114,6 +141,7 @@ public final class PrepoznajService {
                 pb.environment().put("FFMPEG", ffmpeg);
             }
             Process proces = pb.start();
+            spoljni = proces;
             String izlaz = "";
             try (BufferedReader citac = new BufferedReader(
                     new InputStreamReader(proces.getInputStream(), StandardCharsets.UTF_8))) {
@@ -147,12 +175,18 @@ public final class PrepoznajService {
         } catch (Neuspeh e) {
             throw e;
         } catch (java.io.IOException e) {
+            if (prekinut) {
+                throw new Neuspeh("Prepoznavanje prekinuto.");
+            }
             throw new Neuspeh("Ne mogu da pokrenem Python (" + python + ").\n\n"
                     + "Treba Python 3 sa shazamio i ffmpeg:\n"
                     + "  python3 -m venv venv && venv/bin/pip install shazamio\n"
                     + "pa u kvizradio.properties:\n"
                     + "  prepoznavanje.python=putanja/do/venv/bin/python");
         } catch (Exception e) {
+            if (prekinut) {
+                throw new Neuspeh("Prepoznavanje prekinuto.");
+            }
             throw new Neuspeh("Prepoznavanje nije uspelo: " + e.getMessage());
         }
     }
@@ -227,6 +261,7 @@ public final class PrepoznajService {
                     String.valueOf(SEKUNDI_ZA_OTISAK), stanica.url());
             pb.redirectErrorStream(true);
             Process proces = pb.start();
+            spoljni = proces;
             String trajanje = "";
             String otisak = "";
             try (BufferedReader citac = new BufferedReader(
