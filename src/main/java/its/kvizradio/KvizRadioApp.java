@@ -3,6 +3,7 @@ package its.kvizradio;
 import its.kvizradio.player.PlayerService;
 import its.kvizradio.radio.BezReklama;
 import its.kvizradio.radio.FavoritesStore;
+import its.kvizradio.radio.Grupe;
 import its.kvizradio.radio.HiddenStore;
 import its.kvizradio.radio.Meni;
 import its.kvizradio.radio.Odeljak;
@@ -54,6 +55,7 @@ public class KvizRadioApp extends Application {
     private final RadioBrowserService api = new RadioBrowserService(this::zabelezi);
     private final FavoritesStore omiljene = new FavoritesStore(this::zabelezi);
     private final HiddenStore sakrivene = new HiddenStore(this::zabelezi);
+    private final Grupe grupe = new Grupe(this::zabelezi);
     private final BezReklama bezReklama = new BezReklama(this::zabelezi);
 
     private PlayerService player;
@@ -222,11 +224,13 @@ public class KvizRadioApp extends Application {
         vrstaPrikaza = sekcija.vrsta();
         lokalniFilter = sekcija.vrsta() != Sekcija.Vrsta.PRETRAGA;
 
-        mrvica.setText(Tekst.razmaknuto((grupa + " / " + sekcija.naziv()).toUpperCase()));
+        // grupe sa jednom stavkom (Omiljene, Sakrivene) ne treba da pisu ime dvaput
+        String putanja = grupa.equals(sekcija.naziv()) ? grupa : grupa + " / " + sekcija.naziv();
+        mrvica.setText(Tekst.razmaknuto(putanja.toUpperCase()));
         naslov.setText(sekcija.naziv());
 
         ucitaj(() -> switch (sekcija.vrsta()) {
-            case OMILJENE -> List.of(Odeljak.bezNaslova(omiljene.sve()));
+            case OMILJENE -> odeljciOmiljenih();
             case SAKRIVENE -> List.of(Odeljak.bezNaslova(sakrivene.sve()));
             case BEZ_REKLAMA -> api.bezReklama(bezReklama, sekcija.drzava(), limit);
             case PRETRAGA -> List.of(Odeljak.bezNaslova(api.pretraga(sekcija, limit)));
@@ -274,7 +278,8 @@ public class KvizRadioApp extends Application {
         // sakrivene se ne prikazuju nigde osim u svojoj sekciji
         List<Odeljak> odeljci = vrstaPrikaza == Sekcija.Vrsta.SAKRIVENE ? ulaz : bezSakrivenih(ulaz);
         int ukupno = odeljci.stream().mapToInt(o -> o.stanice().size()).sum();
-        podnaslov.setText(ukupno + (ukupno == 1 ? " stanica" : " stanica") + " · klik pusta uzivo");
+        podnaslov.setText(ukupno + " stanica · klik pusta uzivo"
+                + (vrstaPrikaza == Sekcija.Vrsta.OMILJENE ? " · desni klik na karticu za grupu" : ""));
 
         if (ukupno == 0) {
             sadrzaj.getChildren().add(prazno());
@@ -294,7 +299,7 @@ public class KvizRadioApp extends Application {
             for (Stanica s : o.stanice()) {
                 Kartica k = new Kartica(s, omiljene.jeste(s),
                         vrstaPrikaza == Sekcija.Vrsta.SAKRIVENE,
-                        this::pusti, this::prebaciOmiljenu, this::prebaciSakrivenu);
+                        this::pusti, this::prebaciOmiljenu, this::prebaciSakrivenu, this::meniGrupa);
                 kartice.put(s.uuid(), k);
                 mreza.getChildren().add(k);
             }
@@ -323,6 +328,75 @@ public class KvizRadioApp extends Application {
         box.setAlignment(Pos.CENTER);
         box.setMinHeight(420);
         return box;
+    }
+
+    /**
+     * Omiljene, razvrstane po grupama. Bez ijedne grupe izgleda kao i pre -
+     * jedna mreza kartica bez naslova.
+     */
+    private List<Odeljak> odeljciOmiljenih() {
+        List<Stanica> sve = omiljene.sve();
+        List<String> imena = grupe.grupe();
+        if (imena.isEmpty()) {
+            return List.of(Odeljak.bezNaslova(sve));
+        }
+        List<Odeljak> odeljci = new ArrayList<>();
+        for (String ime : imena) {
+            List<Stanica> uGrupi = sve.stream().filter(s -> ime.equals(grupe.grupa(s))).toList();
+            if (!uGrupi.isEmpty()) {
+                odeljci.add(new Odeljak(ime, uGrupi));
+            }
+        }
+        List<Stanica> bezGrupe = sve.stream().filter(s -> grupe.grupa(s).isBlank()).toList();
+        if (!bezGrupe.isEmpty()) {
+            odeljci.add(new Odeljak("Bez grupe", bezGrupe));
+        }
+        return odeljci;
+    }
+
+    /**
+     * Desni klik na karticu u omiljenima: u koju grupu ide. Grupa nastaje tako
+     * sto joj se doda prva stanica - nema pravljenja praznih grupa unapred.
+     */
+    private void meniGrupa(Stanica s) {
+        if (vrstaPrikaza != Sekcija.Vrsta.OMILJENE) {
+            return;
+        }
+        Kartica kartica = kartice.get(s.uuid());
+        if (kartica == null) {
+            return;
+        }
+        javafx.scene.control.ContextMenu meni = new javafx.scene.control.ContextMenu();
+        String trenutna = grupe.grupa(s);
+        for (String ime : grupe.grupe()) {
+            javafx.scene.control.MenuItem stavka
+                    = new javafx.scene.control.MenuItem(ime.equals(trenutna) ? "\u2713  " + ime : "     " + ime);
+            stavka.setOnAction(e -> postaviGrupu(s, ime));
+            meni.getItems().add(stavka);
+        }
+        if (!trenutna.isBlank()) {
+            javafx.scene.control.MenuItem bez = new javafx.scene.control.MenuItem("     Izvadi iz grupe");
+            bez.setOnAction(e -> postaviGrupu(s, ""));
+            meni.getItems().add(bez);
+        }
+        if (!meni.getItems().isEmpty()) {
+            meni.getItems().add(new javafx.scene.control.SeparatorMenuItem());
+        }
+        javafx.scene.control.MenuItem nova = new javafx.scene.control.MenuItem("     Nova grupa...");
+        nova.setOnAction(e -> {
+            var pitanje = new javafx.scene.control.TextInputDialog();
+            pitanje.setTitle("Nova grupa");
+            pitanje.setHeaderText("Kako se zove grupa?");
+            pitanje.setContentText("Naziv:");
+            pitanje.showAndWait().ifPresent(ime -> postaviGrupu(s, ime));
+        });
+        meni.getItems().add(nova);
+        meni.show(kartica, javafx.geometry.Side.BOTTOM, 0, 0);
+    }
+
+    private void postaviGrupu(Stanica s, String ime) {
+        grupe.postavi(s, ime);
+        ucitaj(izvorPrikaza);
     }
 
     private List<Odeljak> bezSakrivenih(List<Odeljak> odeljci) {
@@ -449,6 +523,10 @@ public class KvizRadioApp extends Application {
 
     private void prebaciOmiljenu(Stanica s) {
         boolean sada = omiljene.prebaci(s);
+        if (!sada) {
+            // izbacena iz omiljenih - grupa vise nema na sta da se odnosi
+            grupe.postavi(s, "");
+        }
         Kartica k = kartice.get(s.uuid());
         if (k != null) {
             k.oznaciOmiljenu(sada);
