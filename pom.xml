@@ -23,6 +23,13 @@
             <version>${javafx.version}</version>
         </dependency>
 
+        <!-- citanje i upis ID3 tagova lokalnih fajlova -->
+        <dependency>
+            <groupId>net.jthink</groupId>
+            <artifactId>jaudiotagger</artifactId>
+            <version>3.0.1</version>
+        </dependency>
+
         <!-- javafx.scene.media ne ume Icecast pouzdano; vlcj svira preko libvlc-a -->
         <dependency>
             <groupId>uk.co.caprica</groupId>

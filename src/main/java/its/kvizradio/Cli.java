@@ -18,6 +18,8 @@ import java.util.List;
  *   -izbor 3       koju iz liste pustiti (podrazumevano prvu)
  *   -sviraj 20     koliko sekundi svirati (0 = samo lista, bez zvuka)
  *   -zanrovi       ispisi najcesce zanrove umesto stanica
+ *   -folder "put"  skeniraj folder sa muzikom i pusti ga (umesto radija)
+ *   -redom         folder ide redom umesto nasumicno
  * </pre>
  */
 public final class Cli {
@@ -29,6 +31,11 @@ public final class Cli {
         int koliko = Integer.parseInt(vrednost(args, "-n", "10"));
         int izbor = Integer.parseInt(vrednost(args, "-izbor", "1"));
         int sekundi = Integer.parseInt(vrednost(args, "-sviraj", "20"));
+
+        if (vrednost(args, "-folder", null) != null) {
+            lokalno(vrednost(args, "-folder", null), !ima(args, "-redom"), sekundi);
+            return;
+        }
 
         RadioBrowserService api = new RadioBrowserService(System.out::println);
 
@@ -67,6 +74,51 @@ public final class Cli {
 
         Thread.sleep(sekundi * 1000L);
 
+        System.out.println("Fade out 2s...");
+        player.fadeOut(2000);
+        Thread.sleep(2500);
+        player.oslobodi();
+        System.out.println("Gotovo.");
+    }
+
+    /**
+     * Provera lokalnog dela: skeniraj folder, ispisi sta je naslo, pa pusti red
+     * sviranja - ukljucujuci automatski prelaz na sledecu numeru.
+     */
+    private static void lokalno(String putanja, boolean nasumicno, int sekundi) throws Exception {
+        var biblioteka = new its.kvizradio.lokalno.Biblioteka(System.out::println);
+        long pocelo = System.currentTimeMillis();
+        var folder = biblioteka.folder("CLI", java.nio.file.Path.of(putanja));
+        System.out.println("Skeniranje: " + (System.currentTimeMillis() - pocelo) + "ms, "
+                + folder.numere().size() + " pesama");
+        for (its.kvizradio.lokalno.Numera n : folder.numere()) {
+            System.out.printf("  %-42s %-6s %s%n", skrati(n.opis(), 42), n.trajanje(),
+                    n.imaTag() ? "tag" : "iz imena fajla");
+        }
+        if (folder.numere().isEmpty() || sekundi <= 0) {
+            return;
+        }
+
+        var red = new its.kvizradio.lokalno.RedSviranja(folder.numere(), nasumicno);
+        PlayerService player = new PlayerService(
+                st -> System.out.println("  [" + st.stanje() + "]"), System.out::println);
+        player.jacina(70);
+        player.postaviSlusaocaNapretka(n -> { });
+        player.postaviKrajNumere(() -> {
+            var sledeca = red.sledeca();
+            System.out.println("  kraj numere -> " + (sledeca == null ? "-" : sledeca.opis()));
+            if (sledeca != null) {
+                player.pustiFajl(sledeca.putanja());
+            }
+        });
+
+        var prva = red.sledeca();
+        System.out.println();
+        System.out.println("Pustam (" + (nasumicno ? "nasumicno" : "redom") + "): " + prva.opis());
+        player.pustiFajl(prva.putanja());
+        for (int i = 0; i < sekundi; i++) {
+            Thread.sleep(1000);
+        }
         System.out.println("Fade out 2s...");
         player.fadeOut(2000);
         Thread.sleep(2500);

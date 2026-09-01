@@ -89,6 +89,10 @@ jobs:
       # --win-upgrade-uuid mora ostati ISTI zauvek - po njemu Windows prepoznaje
       # da je ovo ista aplikacija i radi update umesto druge instalacije.
       #
+      # Aplikacija se pakuje preko classpath-a, ne kao modul: jaudiotagger nema
+      # module-info, a jlink odbija automatske module. Zato --main-jar/--main-class,
+      # i zato Pokretac ne nasledjuje Application.
+      #
       # --add-modules jdk.crypto.ec: SunEC nije nicija "requires" nego service
       # provider, pa ga jlink ne uvlaci sam. Bez njega runtime nema nijedan
       # ECDHE cipher suite i HTTPS ka api.radio-browser.info pukne na
@@ -96,21 +100,21 @@ jobs:
       - name: jpackage
         shell: pwsh
         run: |
-          Copy-Item target\KvizRadio-*.jar target\libs\
-          # javafx-*.jar bez klasifikatora su prazne ljuske (300 bajtova) pored
-          # pravih -win.jar verzija; na module path-u bi to bio isti modul dvaput
-          Get-ChildItem target\libs\javafx-*.jar |
-            Where-Object { $_.Name -notlike '*-win.jar' } | Remove-Item -Force
+          # ime jar-a je uvek KvizRadio-1.0.jar (verzija u pom-u), a --main-jar
+          # trazi tacno ime - pa se prepisuje na stalno
+          Copy-Item (Get-ChildItem target\KvizRadio-*.jar | Select-Object -First 1).FullName target\libs\KvizRadio.jar
+          # sve iz tools ide u isti --input folder: VLC, fpcalc i skripte moraju pored .exe-a
+          Copy-Item tools\* target\libs\ -Recurse -Force
           jpackage `
             --type exe `
             --name KvizRadio `
             --app-version ${{ steps.v.outputs.verzija }} `
             --win-upgrade-uuid d0cee49b-4869-4ae4-8c95-0778d93cec2b `
             --icon installer\kvizradio.ico `
-            --module-path target\libs `
-            --module its.kvizradio/its.kvizradio.Pokretac `
-            --add-modules its.kvizradio,jdk.crypto.ec `
-            --input tools `
+            --input target\libs `
+            --main-jar KvizRadio.jar `
+            --main-class its.kvizradio.Pokretac `
+            --add-modules java.base,java.desktop,java.net.http,java.logging,jdk.crypto.ec `
             --dest dist `
             --win-dir-chooser `
             --win-menu `

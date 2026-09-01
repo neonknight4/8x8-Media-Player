@@ -15,8 +15,7 @@ set JAR_NAME=KvizRadio
 REM Verzija se moze zadati kao argument: build-windows.bat 1.1
 set APP_VERSION=%1
 if "%APP_VERSION%"=="" set APP_VERSION=1.0
-set MODULE_NAME=its.kvizradio
-set MAIN_MODULE=%MODULE_NAME%/its.kvizradio.Pokretac
+set MAIN_CLASS=its.kvizradio.Pokretac
 set TOOLS_DIR=tools
 
 REM VLC 3.x, ne 4.x - vlcj 4 radi sa libvlc 3, na 4 ne. Verzija je pinovana
@@ -57,15 +56,20 @@ if not exist "%TOOLS_DIR%\fpcalc.exe" (
     rmdir /S /Q fpcalc-tmp
 )
 
-echo [3/4] Copying app jar to module path...
-copy /Y "target\%JAR_NAME%-*.jar" "target\libs\" >nul || goto :error
-REM javafx-*.jar bez klasifikatora su prazne ljuske (300 bajtova) pored pravih
-REM -win.jar verzija; na module path-u bi to bio isti modul dvaput
-powershell -NoProfile -Command "Get-ChildItem target\libs\javafx-*.jar | Where-Object { $_.Name -notlike '*-win.jar' } | Remove-Item -Force" || goto :error
+echo [3/4] Collecting jars and bundled tools...
+REM ime jar-a je uvek KvizRadio-1.0.jar (verzija u pom-u), a --main-jar trazi
+REM tacno ime - pa se prepisuje na stalno
+copy /Y "target\%JAR_NAME%-*.jar" "target\libs\%JAR_NAME%.jar" >nul || goto :error
+REM sve iz tools ide u isti --input folder: VLC, fpcalc i skripte moraju pored .exe-a
+xcopy /E /I /Y /Q "%TOOLS_DIR%\*" "target\libs\" >nul || goto :error
 
 echo [4/4] jpackage...
 REM --win-upgrade-uuid mora ostati ISTI zauvek - po njemu Windows prepoznaje
 REM da je ovo ista aplikacija i radi update umesto druge instalacije.
+REM
+REM Aplikacija se pakuje preko classpath-a, ne kao modul: jaudiotagger nema
+REM module-info, a jlink odbija automatske module. Zato --main-jar/--main-class,
+REM i zato Pokretac ne nasledjuje Application (JVM to inace odbija sa classpath-a).
 REM
 REM --add-modules jdk.crypto.ec: SunEC nije nicija "requires" nego service
 REM provider, pa ga jlink ne uvlaci sam. Bez njega runtime nema nijedan ECDHE
@@ -77,10 +81,10 @@ jpackage ^
   --app-version %APP_VERSION% ^
   --win-upgrade-uuid d0cee49b-4869-4ae4-8c95-0778d93cec2b ^
   --icon "installer\kvizradio.ico" ^
-  --module-path "target\libs" ^
-  --module %MAIN_MODULE% ^
-  --add-modules %MODULE_NAME%,jdk.crypto.ec ^
-  --input "%TOOLS_DIR%" ^
+  --input "target\libs" ^
+  --main-jar %JAR_NAME%.jar ^
+  --main-class %MAIN_CLASS% ^
+  --add-modules java.base,java.desktop,java.net.http,java.logging,jdk.crypto.ec ^
   --dest dist ^
   --win-dir-chooser ^
   --win-menu ^

@@ -1,0 +1,10 @@
+{
+  "_opis": [
+    "Folderi sa muzikom za sekciju 'Moja muzika'. Tvoja kopija je u",
+    "%APPDATA%\\KvizRadio odnosno ~/.config/KvizRadio - dodaje se i iz same",
+    "aplikacije (dugme 'Dodaj folder'), ili rucno ovde.",
+    "naziv   = kako pise na kartici",
+    "putanja = folder; pretrazuje se i sve ispod njega"
+  ],
+  "folderi": []
+}
