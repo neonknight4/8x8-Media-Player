@@ -11,7 +11,7 @@ import java.util.List;
 public record Sekcija(String naziv, String drzava, List<String> tagovi, Vrsta vrsta) {
 
     public enum Vrsta {
-        PRETRAGA, OMILJENE, BEZ_REKLAMA
+        PRETRAGA, OMILJENE, BEZ_REKLAMA, SAKRIVENE
     }
 
     public static Sekcija pretraga(String naziv, String drzava, List<String> tagovi) {
@@ -29,5 +29,9 @@ public record Sekcija(String naziv, String drzava, List<String> tagovi, Vrsta vr
 
     public static Sekcija omiljene() {
         return new Sekcija("Omiljene", null, List.of(), Vrsta.OMILJENE);
+    }
+
+    public static Sekcija sakrivene() {
+        return new Sekcija("Sakrivene", null, List.of(), Vrsta.SAKRIVENE);
     }
 }

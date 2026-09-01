@@ -3,6 +3,7 @@ package its.kvizradio;
 import its.kvizradio.player.PlayerService;
 import its.kvizradio.radio.BezReklama;
 import its.kvizradio.radio.FavoritesStore;
+import its.kvizradio.radio.HiddenStore;
 import its.kvizradio.radio.Meni;
 import its.kvizradio.radio.Odeljak;
 import its.kvizradio.radio.RadioBrowserService;
@@ -50,6 +51,7 @@ public class KvizRadioApp extends Application {
     private final List<String> log = new ArrayList<>();
     private final RadioBrowserService api = new RadioBrowserService(this::zabelezi);
     private final FavoritesStore omiljene = new FavoritesStore(this::zabelezi);
+    private final HiddenStore sakrivene = new HiddenStore(this::zabelezi);
     private final BezReklama bezReklama = new BezReklama(this::zabelezi);
 
     private PlayerService player;
@@ -68,6 +70,9 @@ public class KvizRadioApp extends Application {
 
     /** Sta je poslednje ucitano - za lokalni filter, bez novog poziva API-ja. */
     private List<Odeljak> ucitano = List.of();
+    /** Odakle je ucitano - da se prikaz osvezi bez pamcenja koja je stavka kliknuta. */
+    private Supplier<List<Odeljak>> izvorPrikaza;
+    private Sekcija.Vrsta vrstaPrikaza = Sekcija.Vrsta.PRETRAGA;
     private boolean lokalniFilter;
     private Stanica izabrana;
     private int limit = 40;
@@ -122,6 +127,7 @@ public class KvizRadioApp extends Application {
         stage.show();
 
         sidebar.broj("Omiljene", omiljene.sve().size());
+        sidebar.broj("Sakrivene", sakrivene.sve().size());
         sidebar.izaberiPrvu();
     }
 
@@ -190,6 +196,7 @@ public class KvizRadioApp extends Application {
         }
 
         grupe.add(new Meni.Grupa("Omiljene", List.of(Sekcija.omiljene())));
+        grupe.add(new Meni.Grupa("Sakrivene", List.of(Sekcija.sakrivene())));
         return grupe;
     }
 
@@ -198,6 +205,7 @@ public class KvizRadioApp extends Application {
     /** Klik u levom meniju: naslovi se postave odmah, stanice stizu iz pozadine. */
     private void otvori(String grupa, Sekcija sekcija) {
         pretraga.clear();
+        vrstaPrikaza = sekcija.vrsta();
         lokalniFilter = sekcija.vrsta() != Sekcija.Vrsta.PRETRAGA;
 
         mrvica.setText(Tekst.razmaknuto((grupa + " / " + sekcija.naziv()).toUpperCase()));
@@ -205,6 +213,7 @@ public class KvizRadioApp extends Application {
 
         ucitaj(() -> switch (sekcija.vrsta()) {
             case OMILJENE -> List.of(Odeljak.bezNaslova(omiljene.sve()));
+            case SAKRIVENE -> List.of(Odeljak.bezNaslova(sakrivene.sve()));
             case BEZ_REKLAMA -> api.bezReklama(bezReklama, sekcija.drzava(), limit);
             case PRETRAGA -> List.of(Odeljak.bezNaslova(api.pretraga(sekcija, limit)));
         });
@@ -218,6 +227,7 @@ public class KvizRadioApp extends Application {
         }
         mrvica.setText(Tekst.razmaknuto("PRETRAGA"));
         naslov.setText(upit);
+        vrstaPrikaza = Sekcija.Vrsta.PRETRAGA;
         ucitaj(() -> List.of(Odeljak.bezNaslova(api.pretraga(null, null, upit, limit))));
     }
 
@@ -226,6 +236,7 @@ public class KvizRadioApp extends Application {
      * vraca na FX nit, jer se tek tada prave kartice.
      */
     private void ucitaj(Supplier<List<Odeljak>> izvor) {
+        izvorPrikaza = izvor;
         podnaslov.setText("Ucitavam...");
         sadrzaj.getChildren().clear();
         kartice.clear();
@@ -241,10 +252,12 @@ public class KvizRadioApp extends Application {
         }));
     }
 
-    private void nacrtaj(List<Odeljak> odeljci) {
+    private void nacrtaj(List<Odeljak> ulaz) {
         sadrzaj.getChildren().clear();
         kartice.clear();
 
+        // sakrivene se ne prikazuju nigde osim u svojoj sekciji
+        List<Odeljak> odeljci = vrstaPrikaza == Sekcija.Vrsta.SAKRIVENE ? ulaz : bezSakrivenih(ulaz);
         int ukupno = odeljci.stream().mapToInt(o -> o.stanice().size()).sum();
         podnaslov.setText(ukupno + (ukupno == 1 ? " stanica" : " stanica") + " · klik pusta uzivo");
 
@@ -264,7 +277,9 @@ public class KvizRadioApp extends Application {
             }
             FlowPane mreza = new FlowPane(18, 18);
             for (Stanica s : o.stanice()) {
-                Kartica k = new Kartica(s, omiljene.jeste(s), this::pusti, this::prebaciOmiljenu);
+                Kartica k = new Kartica(s, omiljene.jeste(s),
+                        vrstaPrikaza == Sekcija.Vrsta.SAKRIVENE,
+                        this::pusti, this::prebaciOmiljenu, this::prebaciSakrivenu);
                 kartice.put(s.uuid(), k);
                 mreza.getChildren().add(k);
             }
@@ -293,6 +308,20 @@ public class KvizRadioApp extends Application {
         box.setAlignment(Pos.CENTER);
         box.setMinHeight(420);
         return box;
+    }
+
+    private List<Odeljak> bezSakrivenih(List<Odeljak> odeljci) {
+        if (sakrivene.sve().isEmpty()) {
+            return odeljci;
+        }
+        List<Odeljak> izlaz = new ArrayList<>();
+        for (Odeljak o : odeljci) {
+            List<Stanica> ostale = o.stanice().stream().filter(s -> !sakrivene.jeste(s)).toList();
+            if (!ostale.isEmpty()) {
+                izlaz.add(new Odeljak(o.naziv(), ostale));
+            }
+        }
+        return izlaz;
     }
 
     /** Lokalni filter po imenu i tagovima - za omiljene i mreze bez reklama. */
@@ -348,6 +377,21 @@ public class KvizRadioApp extends Application {
             k.oznaciOmiljenu(sada);
         }
         sidebar.broj("Omiljene", omiljene.sve().size());
+    }
+
+    /**
+     * Krstic na kartici: iz obicne liste stanica ide u sakrivene, iz sekcije
+     * "Sakrivene" se vraca tamo odakle je i dosla - nista se ne pamti, jer su
+     * sekcije pretrage API-ja pa se stanica sama vrati na svoje mesto.
+     */
+    private void prebaciSakrivenu(Stanica s) {
+        sakrivene.prebaci(s);
+        sidebar.broj("Sakrivene", sakrivene.sve().size());
+        if (vrstaPrikaza == Sekcija.Vrsta.SAKRIVENE) {
+            ucitaj(izvorPrikaza);
+        } else {
+            nacrtaj(filtrirano(ucitano, pretraga.getText()));
+        }
     }
 
     private Stanica prvaVidljiva() {
