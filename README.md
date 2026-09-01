@@ -34,8 +34,11 @@ dugme **PREPOZNAJ** u donjem baru.
 
 | servis | cena | radi na radiju? |
 |---|---|---|
-| `audd` (podrazumevano) | placeno posle probe | da, radjeno bas za to |
+| `audd` (podrazumevano) | 300 zahteva besplatno pri registraciji (bez kartice), pa $5/mesec za 1.000 | da, radjeno bas za to |
 | `acoustid` | besplatno | **ne** - vidi merenje ispod |
+
+Jedno prepoznavanje je jedan klik na PREPOZNAJ, pa 300 besplatnih zahteva
+izadje na nekoliko desetina kvizova.
 
 ```properties
 # kvizradio.properties
