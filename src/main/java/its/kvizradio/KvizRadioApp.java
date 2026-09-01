@@ -117,8 +117,7 @@ public class KvizRadioApp extends Application {
             return;
         }
 
-        prepoznavanje = new PrepoznajService(konf.getProperty("prepoznavanje.servis", "audd"),
-                konf.getProperty("prepoznavanje.apiKey", ""),
+        prepoznavanje = new PrepoznajService(
                 konf.getProperty("prepoznavanje.python", ""), this::zabelezi);
         bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, this::jacina,
                 this::prebaciPrigusenje, this::prepoznajPesmu,
@@ -586,8 +585,7 @@ public class KvizRadioApp extends Application {
     /**
      * Prepoznavanje pesme bez taga i upis rezultata u sam fajl.
      *
-     * Nad fajlom radi i AcoustID, za razliku od radija: otisak se pravi od celog
-     * snimka, a njegova baza je gradjena bas od celih snimaka.
+     * Isti put kao za radio, samo ffmpeg cita fajl umesto strima.
      */
     private void prepoznajNumeru(Folder folder, Numera n, Label dugme) {
         dugme.setText(Tekst.razmaknuto("TRAZIM..."));
