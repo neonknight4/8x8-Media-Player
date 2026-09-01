@@ -47,17 +47,30 @@ public final class PrepoznajService {
     }
 
     /**
-     * Windows instaler nosi svoj Python sa shazamio-om u podfolderu "python",
-     * kao sto nosi i VLC - na tudjem laptopu u kafani se ne racuna na to da je
-     * Python instaliran. Ako ga nema (razvoj, Linux), ide golo ime iz PATH-a.
+     * Python se trazi na dva dogovorena mesta pre nego sto se padne na PATH,
+     * da se prepoznavanje ne podesava rucno:
+     * <ol>
+     *   <li>podfolder "python" u instalaciji - Windows instaler nosi svoj
+     *       Python sa shazamio-om, kao sto nosi i VLC;</li>
+     *   <li>"venv" u folderu podesavanja - tu ga pravi postavi-shazam.sh na
+     *       Linuxu, gde shazamio ne moze u sistemski Python (PEP 668).</li>
+     * </ol>
+     * Golo ime iz PATH-a je poslednje: sistemski Python skoro nikad nema
+     * shazamio, ali ako neko sam podesi okruzenje, radi i to.
      */
     private static String podrazumevaniPython() {
-        Path folder = Alati.nadjiFolder("python");
-        if (folder != null) {
-            Path exe = folder.resolve(Alati.WINDOWS ? "python.exe" : "bin/python");
+        String relativna = Alati.WINDOWS ? "Scripts/python.exe" : "bin/python";
+        Path uzAplikaciju = Alati.nadjiFolder("python");
+        if (uzAplikaciju != null) {
+            // embeddable Python nema bin/ ni Scripts/ - python.exe je u korenu
+            Path exe = uzAplikaciju.resolve(Alati.WINDOWS ? "python.exe" : "bin/python");
             if (Files.isRegularFile(exe)) {
                 return exe.toString();
             }
+        }
+        Path uVenvu = Alati.podesavanjaFolder().resolve("venv").resolve(relativna);
+        if (Files.isRegularFile(uVenvu)) {
+            return uVenvu.toString();
         }
         return Alati.WINDOWS ? "python" : "python3";
     }
