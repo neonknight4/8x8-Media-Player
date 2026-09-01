@@ -122,6 +122,10 @@ jobs:
       # provider, pa ga jlink ne uvlaci sam. Bez njega runtime nema nijedan
       # ECDHE cipher suite i HTTPS ka api.radio-browser.info pukne na
       # handshake_failure.
+      #
+      # --add-modules jdk.unsupported: JavaFX-ov Marlin rasterizer trazi
+      # sun.misc.Unsafe. Bez njega se aplikacija digne pa pukne na prvom
+      # crtanju - NoClassDefFoundError: sun/misc/Unsafe u com.sun.marlin.
       - name: jpackage
         shell: pwsh
         run: |
@@ -139,7 +143,7 @@ jobs:
             --input target\libs `
             --main-jar KvizRadio.jar `
             --main-class its.kvizradio.Pokretac `
-            --add-modules java.base,java.desktop,java.net.http,java.logging,jdk.crypto.ec `
+            --add-modules java.base,java.desktop,java.net.http,java.logging,jdk.crypto.ec,jdk.unsupported `
             --dest dist `
             --win-dir-chooser `
             --win-menu `
