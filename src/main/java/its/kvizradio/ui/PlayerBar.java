@@ -6,6 +6,7 @@ import its.kvizradio.radio.Stanica;
 
 import javafx.animation.Animation;
 import javafx.animation.FadeTransition;
+import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Group;
@@ -28,6 +29,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Donji bar: sta svira, koja pesma ide, veliko dugme, jacina, fade out.
@@ -59,13 +61,23 @@ public final class PlayerBar extends StackPane {
     private final Rectangle kvadrat = new Rectangle(17, 17);
     private final FadeTransition treperenje;
 
+    private final Spektar spektar;
+    private final Timeline osvezavanjeSpektra;
+
     private final Polygon zvucnik = new Polygon(0, 5, 4, 5, 9, 0, 9, 16, 4, 11, 0, 11);
     private final Arc talasBlizi = new Arc(10, 8, 5, 5, -45, 90);
     private final Arc talasDalji = new Arc(10, 8, 8, 8, -45, 90);
     private final Line precrtano = new Line(1, 15, 17, 1);
 
     public PlayerBar(Runnable naDugme, Runnable naFade, Consumer<Integer> naJacinu,
-            Runnable naMute, Runnable naPrepoznavanje) {
+            Runnable naMute, Runnable naPrepoznavanje, Supplier<float[]> nivoi, int traka) {
+
+        // deset traka, ne svih dvadeset opsega: mirnije je za oko
+        this.spektar = new Spektar(Math.min(10, traka), 24);
+        // dvadeset kadrova u sekundi je dovoljno da oko vidi tecno, a ne trosi
+        this.osvezavanjeSpektra = new Timeline(
+                new javafx.animation.KeyFrame(Duration.millis(50), e -> spektar.crtaj(nivoi.get())));
+        this.osvezavanjeSpektra.setCycleCount(Animation.INDEFINITE);
 
         getStyleClass().add("player-bar");
         setPrefHeight(90);
@@ -162,6 +174,12 @@ public final class PlayerBar extends StackPane {
 
         trougao.setVisible(!radi);
         kvadrat.setVisible(radi);
+        if (st.stanje() == PlayerService.Stanje.SVIRA) {
+            osvezavanjeSpektra.play();
+        } else {
+            osvezavanjeSpektra.stop();
+            spektar.ugasi();
+        }
         fade.setDisable(!radi);
         Sidebar.postaviKlasu(fade, "u-toku", false);
     }
@@ -228,7 +246,7 @@ public final class PlayerBar extends StackPane {
         StackPane avatar = new StackPane(prsten, inicijali);
 
         ime.getStyleClass().add("sada-ime");
-        ime.setMaxWidth(300);
+        ime.setMaxWidth(280);
         status.getStyleClass().add("status");
         meta.getStyleClass().add("sada-meta");
 
@@ -238,7 +256,7 @@ public final class PlayerBar extends StackPane {
         nota.getStyleClass().add("nota");
         pesmaIzvodjac.getStyleClass().add("pesma-izvodjac");
         pesmaNaslov.getStyleClass().add("pesma-naslov");
-        pesmaNaslov.setMaxWidth(300);
+        pesmaNaslov.setMaxWidth(270);
 
         prepoznaj.getStyleClass().add("prepoznaj-dugme");
         prepoznaj.setTooltip(new Tooltip("Prepoznaj pesmu koja trenutno ide"));
@@ -256,7 +274,7 @@ public final class PlayerBar extends StackPane {
 
         HBox box = new HBox(14, avatar, tekst);
         box.setAlignment(Pos.CENTER_LEFT);
-        box.setMaxWidth(440);
+        box.setMaxWidth(400);
         return box;
     }
 
@@ -289,7 +307,7 @@ public final class PlayerBar extends StackPane {
         jacinaBroj.getStyleClass().add("jacina-broj");
         jacinaBroj.setMinWidth(30);
 
-        HBox vol = new HBox(12, mute(naMute), oznaka, jacina, jacinaBroj);
+        HBox vol = new HBox(12, spektar, mute(naMute), oznaka, jacina, jacinaBroj);
         vol.setAlignment(Pos.CENTER);
 
         fade.getStyleClass().add("fade-dugme");

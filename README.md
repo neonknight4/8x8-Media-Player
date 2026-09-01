@@ -20,6 +20,7 @@ zna za JavaFX.
 - mute pored VOL; fade out; sekcije Domace (Pop/Rock/Folk/Ex-Yu), Zanrovi,
   Bez reklama, Omiljene, Sakrivene
 - **grupe omiljenih** (Pauza, Zagrevanje...): desni klik na karticu u omiljenima
+- **spektar** u donjem baru dok muzika svira - zlatne trake, brojevi iz VLC-a
 - precice: `Space` play/stop, `F` fade out, strelice jacina
 
 ## Naziv pesme
@@ -187,6 +188,20 @@ VLC je pinovan na **3.0.x**: vlcj 4 radi sa libvlc 3, sa libvlc 4 ne.
 
 Isto radi i GitHub Actions (`.github/workflows/windows-installer.yml`), rucno
 ili na tag `v1.1`; instaler ide kao Release asset.
+
+## Spektar
+
+VLC-ov modul `visual` crta spektar kao sliku; aplikacija iz te slike cita samo
+visine po opsezima, a trake crta sama - zlatno na crnom, u istim bojama kao
+ostatak. Sama VLC-ova slika (sarena, zeleno-zuta) se nigde ne prikazuje.
+
+Dve stvari koje su morale da se rese:
+
+- opcije idu na **fabriku** (instancu libvlc-a), ne na medij. Kao opcije medija
+  se ne primene i ne stigne nijedan kadar;
+- radijski zvuk je jako kompresovan, pa sve trake stoje izmedju 0.7 i 0.8 -
+  bez rastezanja opsega se ne bi videlo da se mrdaju. Zato UI vodi klizni
+  minimum i maksimum, pa preko njih rasteze prikaz.
 
 ## Podesavanja
 

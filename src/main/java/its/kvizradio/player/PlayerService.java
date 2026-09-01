@@ -4,10 +4,17 @@ import its.kvizradio.radio.IcyMeta;
 import its.kvizradio.radio.Pesma;
 import its.kvizradio.radio.Stanica;
 
+import uk.co.caprica.vlcj.factory.MediaPlayerFactory;
 import uk.co.caprica.vlcj.media.Meta;
 import uk.co.caprica.vlcj.player.base.MediaPlayer;
 import uk.co.caprica.vlcj.player.base.MediaPlayerEventAdapter;
-import uk.co.caprica.vlcj.player.component.AudioPlayerComponent;
+import uk.co.caprica.vlcj.player.embedded.EmbeddedMediaPlayer;
+import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormat;
+import uk.co.caprica.vlcj.player.embedded.videosurface.callback.BufferFormatCallback;
+import uk.co.caprica.vlcj.player.embedded.videosurface.callback.RenderCallbackAdapter;
+import uk.co.caprica.vlcj.player.embedded.videosurface.callback.format.RV32BufferFormat;
+
+import java.nio.ByteBuffer;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -53,7 +60,27 @@ public final class PlayerService {
     /** libvlc bafer za mrezni strim; 3s je dovoljno da kratak prekid ne pukne. */
     private static final String MREZNI_BAFER = ":network-caching=3000";
 
-    private final AudioPlayerComponent komponenta;
+    /**
+     * Spektar: VLC-ov "visual" modul crta spektar kao sliku, a mi iz te slike
+     * citamo samo visine po opsezima - sama slika se nigde ne prikazuje, trake
+     * crta UI u bojama aplikacije.
+     *
+     * Opcije moraju na fabriku (instancu libvlc-a), ne na medij: kao opcije
+     * medija se ne primene i ne stigne nijedan kadar.
+     */
+    /** Koliko VLC pojacava spektar; podrazumevano je prejako, sve trake stoje uz vrh. */
+    private static final int POJACANJE = Integer.getInteger("kvizradio.pojacanje", 1);
+    private static final int EFEKT_SIRINA = 160;
+    private static final int EFEKT_VISINA = 64;
+    /** VLC bez --spect-80-bands crta dvadeset opsega; toliko i citamo. */
+    public static final int TRAKA = 20;
+
+    private final MediaPlayerFactory fabrika;
+    private final EmbeddedMediaPlayer plejer;
+    /** JNA drzi samo slabu referencu na povratne pozive - bez polja ih pokupi GC. */
+    private final BufferFormatCallback formatKadra;
+    private final RenderCallbackAdapter citacKadra;
+    private volatile float[] nivoi = new float[TRAKA];
     private final ScheduledExecutorService radnik
             = Executors.newSingleThreadScheduledExecutor(r -> {
                 Thread t = new Thread(r, "kvizradio-player");
@@ -97,8 +124,37 @@ public final class PlayerService {
         this.slusalac = slusalac == null ? s -> {} : slusalac;
         this.log = log == null ? s -> {} : log;
         pripremiLibVlc(this.log);
-        this.komponenta = new AudioPlayerComponent();
-        this.komponenta.mediaPlayer().events().addMediaPlayerEventListener(new Dogadjaji());
+
+        this.fabrika = new MediaPlayerFactory(
+                "--audio-visual=visual", "--effect-list=spectrum",
+                "--effect-width=" + EFEKT_SIRINA, "--effect-height=" + EFEKT_VISINA,
+                "--no-spect-80-bands", "--no-spect-show-peaks", "--no-spect-show-base",
+                "--spect-separ=1", "--spect-amp=" + POJACANJE,
+                "--no-video-title-show");
+        this.plejer = fabrika.mediaPlayers().newEmbeddedMediaPlayer();
+        this.formatKadra = new BufferFormatCallback() {
+            @Override
+            public BufferFormat getBufferFormat(int sirina, int visina) {
+                return new RV32BufferFormat(EFEKT_SIRINA, EFEKT_VISINA);
+            }
+
+            @Override
+            public void newFormatSize(int bs, int bv, int ps, int pv) {
+            }
+
+            @Override
+            public void allocatedBuffers(ByteBuffer[] baferi) {
+            }
+        };
+        this.citacKadra = new RenderCallbackAdapter(new int[EFEKT_SIRINA * EFEKT_VISINA]) {
+            @Override
+            protected void onDisplay(MediaPlayer mediaPlayer, int[] piksela) {
+                nivoi = izmeriNivoe(piksela);
+            }
+        };
+        this.plejer.videoSurface().set(
+                fabrika.videoSurfaces().newVideoSurface(formatKadra, citacKadra, true));
+        this.plejer.events().addMediaPlayerEventListener(new Dogadjaji());
     }
 
     /**
@@ -130,8 +186,8 @@ public final class PlayerService {
         otkaziPovezivanje();
         javi(Stanje.POVEZIVANJE, "povezujem se...");
         izvrsi(() -> {
-            komponenta.mediaPlayer().controls().stop();
-            komponenta.mediaPlayer().media().play(stanica.url(), MREZNI_BAFER);
+            plejer.controls().stop();
+            plejer.media().play(stanica.url(), MREZNI_BAFER);
         });
     }
 
@@ -147,7 +203,7 @@ public final class PlayerService {
         otkaziCitanjeMeta();
         otkaziPovezivanje();
         javi(Stanje.STOP, "");
-        izvrsi(() -> komponenta.mediaPlayer().controls().stop());
+        izvrsi(() -> plejer.controls().stop());
     }
 
     /**
@@ -172,7 +228,7 @@ public final class PlayerService {
             if (korak[0] >= koraka) {
                 zeljena = null;
                 otkaziPovezivanje();
-                komponenta.mediaPlayer().controls().stop();
+                plejer.controls().stop();
                 jacina = pocetna;
                 postaviNaPlayer(pocetna);
                 javi(Stanje.STOP, "");
@@ -221,6 +277,40 @@ public final class PlayerService {
         return pesma;
     }
 
+    /**
+     * Visine opsega, 0..1, sveze koliko i poslednji kadar spektra. Kad nista ne
+     * svira, sve su nule - pa se trake same spuste.
+     */
+    public float[] nivoi() {
+        return stanje == Stanje.SVIRA ? nivoi : new float[TRAKA];
+    }
+
+    /**
+     * Iz slike spektra u visine: za svaki opseg se trazi najvisi obojen piksel.
+     * Slika je RV32, pa je "obojen" sve sto nije crno.
+     */
+    private static float[] izmeriNivoe(int[] piksela) {
+        float[] izmereno = new float[TRAKA];
+        int poTraci = Math.max(1, EFEKT_SIRINA / TRAKA);
+        for (int traka = 0; traka < TRAKA; traka++) {
+            int odX = traka * poTraci;
+            int doX = Math.min(EFEKT_SIRINA, odX + poTraci);
+            int najvisi = EFEKT_VISINA;
+            for (int y = 0; y < EFEKT_VISINA; y++) {
+                int red = y * EFEKT_SIRINA;
+                for (int x = odX; x < doX; x++) {
+                    if ((piksela[red + x] & 0xFFFFFF) != 0) {
+                        najvisi = y;
+                        y = EFEKT_VISINA;
+                        break;
+                    }
+                }
+            }
+            izmereno[traka] = 1f - (float) najvisi / EFEKT_VISINA;
+        }
+        return izmereno;
+    }
+
     /** Naziv koji je stigao spolja (prepoznavanje) - da ga bar prikaze isto. */
     public void postaviPesmu(Pesma nova) {
         pesma = nova;
@@ -235,8 +325,9 @@ public final class PlayerService {
         otkaziCitanjeMeta();
         otkaziPovezivanje();
         izvrsi(() -> {
-            komponenta.mediaPlayer().controls().stop();
-            komponenta.release();
+            plejer.controls().stop();
+            plejer.release();
+            fabrika.release();
         });
         ugasen = true;
         citac.shutdownNow();
@@ -264,7 +355,7 @@ public final class PlayerService {
     }
 
     private void postaviNaPlayer(int procenat) {
-        izvrsi(() -> komponenta.mediaPlayer().audio().setVolume(procenat));
+        izvrsi(() -> plejer.audio().setVolume(procenat));
     }
 
     /**
@@ -285,8 +376,8 @@ public final class PlayerService {
         final int[] pokusaja = {0};
         primenaJacine = radnik.scheduleAtFixedRate(() -> {
             int cilj = prigusen ? 0 : jacina;
-            komponenta.mediaPlayer().audio().setVolume(cilj);
-            if (komponenta.mediaPlayer().audio().volume() == cilj || ++pokusaja[0] >= 20) {
+            plejer.audio().setVolume(cilj);
+            if (plejer.audio().volume() == cilj || ++pokusaja[0] >= 20) {
                 otkaziPrimenuJacine();
             }
         }, 0, 100, TimeUnit.MILLISECONDS);
@@ -330,8 +421,8 @@ public final class PlayerService {
                 return;
             }
             javi(Stanje.POVEZIVANJE, "povezujem se ponovo...");
-            komponenta.mediaPlayer().controls().stop();
-            komponenta.mediaPlayer().media().play(stanica.url(), MREZNI_BAFER);
+            plejer.controls().stop();
+            plejer.media().play(stanica.url(), MREZNI_BAFER);
         }, sekundi, TimeUnit.SECONDS);
     }
 
@@ -356,7 +447,7 @@ public final class PlayerService {
             if (stanica == null) {
                 return;
             }
-            var meta = komponenta.mediaPlayer().media().meta();
+            var meta = plejer.media().meta();
             if (meta == null) {
                 return;
             }
