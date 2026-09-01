@@ -70,7 +70,6 @@ public final class PlayerBar extends StackPane {
     private final Label ukupno = new Label("0:00");
     private HBox redPremotavanja;
     private boolean lokalno;
-    private boolean nudiPrepoznavanje;
     private final FadeTransition treperenje;
 
     private final Spektar spektar;
@@ -157,12 +156,8 @@ public final class PlayerBar extends StackPane {
         pokazi(pesmaIzvodjac, !izvodjac.isBlank());
         pokazi(pesmaNaslov, false);
         pesmaIzvodjac.setText(izvodjac);
-        pokazi(prepoznaj, nudiPrepoznavanje);
-    }
-
-    /** Dugme PREPOZNAJ i kad se naslov zna - za lokalne fajlove bez taga. */
-    public void ponudiPrepoznavanje(boolean da) {
-        nudiPrepoznavanje = da;
+        // sa diska se ne prepoznaje - naslov je vec u tagu ili u imenu fajla
+        pokazi(prepoznaj, false);
     }
 
     /** Pozicija u numeri: traka i vreme. */
@@ -280,7 +275,7 @@ public final class PlayerBar extends StackPane {
         pokazi(nota, znamo);
         pokazi(pesmaIzvodjac, znamo && !p.izvodjac().isBlank());
         pokazi(pesmaNaslov, znamo);
-        pokazi(prepoznaj, radi && (!znamo || nudiPrepoznavanje));
+        pokazi(prepoznaj, radi && !znamo);
         if (znamo) {
             pesmaIzvodjac.setText(p.izvodjac() + "  —");
             pesmaNaslov.setText(p.naslov());

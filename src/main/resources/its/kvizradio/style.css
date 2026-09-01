@@ -464,6 +464,72 @@
     -fx-background-color: rgba(212,175,55,0.18);
 }
 
+/* --- plejlista (red sviranja, desno) ------------------------------------- */
+.plejlista {
+    -fx-background-color: #070707;
+    -fx-border-color: transparent transparent transparent rgba(212,175,55,0.16);
+    -fx-border-width: 0 0 0 1;
+}
+
+.plejlista-zaglavlje {
+    -fx-padding: 30 22 18 22;
+    -fx-border-color: transparent transparent rgba(212,175,55,0.14) transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.plejlista-naslov {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #D4AF37;
+}
+
+.plejlista-izvor {
+    -fx-font-size: 16px;
+    -fx-text-fill: #F2EFE6;
+}
+
+.prepoznaj-dugme.ukljuceno {
+    -fx-border-color: #D4AF37;
+    -fx-text-fill: #D4AF37;
+}
+
+.plejlista-red {
+    -fx-padding: 9 18 9 18;
+    -fx-cursor: hand;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 0 2;
+}
+
+.plejlista-red:hover {
+    -fx-background-color: #141412;
+}
+
+.plejlista-red.svira {
+    -fx-background-color: rgba(212,175,55,0.08);
+    -fx-border-color: #D4AF37;
+}
+
+/* red iznad kog visi prevuceni - pokazuje gde ce pasti */
+.plejlista-red.cilj {
+    -fx-background-color: rgba(212,175,55,0.16);
+}
+
+.plejlista-red-naslov {
+    -fx-font-size: 14px;
+    -fx-text-fill: #F2EFE6;
+}
+
+.plejlista-naslov-svira {
+    -fx-font-size: 14px;
+    -fx-text-fill: #D4AF37;
+}
+
+.plejlista-red-meta {
+    -fx-font-size: 11px;
+    -fx-text-fill: #8A8578;
+}
+
 /* --- slider jacine ------------------------------------------------------- */
 .slider .track {
     -fx-background-color: #2A2A28;

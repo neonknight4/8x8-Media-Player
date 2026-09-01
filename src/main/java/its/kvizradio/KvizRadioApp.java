@@ -20,6 +20,7 @@ import its.kvizradio.radio.Stanica;
 import its.kvizradio.ui.FolderKartica;
 import its.kvizradio.ui.Kartica;
 import its.kvizradio.ui.PlayerBar;
+import its.kvizradio.ui.Plejlista;
 import its.kvizradio.ui.Sidebar;
 import its.kvizradio.ui.Tekst;
 
@@ -77,6 +78,7 @@ public class KvizRadioApp extends Application {
     private PrepoznajService prepoznavanje;
     private Sidebar sidebar;
     private PlayerBar bar;
+    private Plejlista plejlista;
 
     private final Label mrvica = new Label();
     private final Label naslov = new Label();
@@ -129,11 +131,14 @@ public class KvizRadioApp extends Application {
         player.postaviKrajNumere(() -> Platform.runLater(this::sledecaNumera));
         sidebar = new Sidebar(this::otvori);
         sidebar.postavi(grupe(konf));
+        plejlista = new Plejlista(this::pustiIzReda, this::pomeriURedu, this::izbaciIzReda,
+                this::mesajRed, this::isprazniRed);
 
         BorderPane koren = new BorderPane();
         koren.getStyleClass().add("pozadina");
         koren.setLeft(sidebar);
         koren.setCenter(sredina());
+        koren.setRight(plejlista);
         koren.setBottom(dno());
 
         Properties stanje = Podesavanja.stanje();
@@ -142,14 +147,14 @@ public class KvizRadioApp extends Application {
         izabrana = poslednjaStanica(stanje);
         bar.pripremi(izabrana);
 
-        Scene scena = new Scene(koren, 1280, 800);
+        Scene scena = new Scene(koren, 1440, 820);
         scena.getStylesheets().add(KvizRadioApp.class.getResource("style.css").toExternalForm());
         scena.addEventFilter(KeyEvent.KEY_PRESSED, this::precice);
 
         stage.setTitle("KvizRadio " + Alati.verzija());
         stage.getIcons().addAll(ikone());
-        // spektar je usao izmedju levog bloka i jacine, pa uzi prozor nema gde
-        stage.setMinWidth(1120);
+        // spektar je usao izmedju levog bloka i jacine, a desno stoji plejlista
+        stage.setMinWidth(1280);
         stage.setMinHeight(640);
         stage.setScene(scena);
         stage.setOnCloseRequest(e -> {
@@ -507,8 +512,7 @@ public class KvizRadioApp extends Application {
                 kolona("#", 44, Pos.CENTER_LEFT),
                 kolona("NASLOV", -1, Pos.CENTER_LEFT),
                 kolona("IZVODJAC", 280, Pos.CENTER_LEFT),
-                kolona("DUZINA", 70, Pos.CENTER_RIGHT),
-                kolona("", 110, Pos.CENTER_RIGHT));
+                kolona("DUZINA", 70, Pos.CENTER_RIGHT));
         red.getStyleClass().add("spisak-zaglavlje");
         red.setPadding(new Insets(0, 14, 10, 14));
         return red;
@@ -530,7 +534,7 @@ public class KvizRadioApp extends Application {
 
     /**
      * Jedan red spiska. Pesma koja upravo svira ima zlatan naslov i notu umesto
-     * rednog broja; pesma bez taga nudi PREPOZNAJ na kraju reda.
+     * rednog broja; desni klik nudi dodavanje u red sviranja.
      */
     private HBox redSpiska(Folder folder, Numera n, int broj) {
         boolean svira = tekucaNumera != null && tekucaNumera.putanja().equals(n.putanja());
@@ -556,75 +560,41 @@ public class KvizRadioApp extends Application {
         duzina.setPrefWidth(70);
         duzina.setAlignment(Pos.CENTER_RIGHT);
 
-        HBox akcija = new HBox();
-        akcija.setMinWidth(110);
-        akcija.setPrefWidth(110);
-        akcija.setAlignment(Pos.CENTER_RIGHT);
-        if (!n.imaTag()) {
-            Label dugme = new Label(Tekst.razmaknuto("PREPOZNAJ"));
-            dugme.getStyleClass().add("prepoznaj-dugme");
-            dugme.setOnMouseClicked(e -> {
-                e.consume();
-                prepoznajNumeru(folder, n, dugme);
-            });
-            akcija.getChildren().add(dugme);
-        }
-
-        HBox red = new HBox(14, pokazatelj, naslovPesme, izvodjacPesme, duzina, akcija);
+        HBox red = new HBox(14, pokazatelj, naslovPesme, izvodjacPesme, duzina);
         red.getStyleClass().add("spisak-red");
         red.setAlignment(Pos.CENTER_LEFT);
         red.setOnMouseClicked(e -> {
-            red(folder).postaviNa(n);
+            if (e.getButton() == javafx.scene.input.MouseButton.SECONDARY) {
+                meniNumere(folder, n, red);
+                return;
+            }
             tekuciRed = red(folder);
+            tekuciRed.postaviNa(n);
             tekuciFolder = folder.naziv();
             pustiNumeru(n);
         });
         return red;
     }
 
-    /**
-     * Prepoznavanje pesme bez taga i upis rezultata u sam fajl.
-     *
-     * Isti put kao za radio, samo ffmpeg cita fajl umesto strima.
-     */
-    private void prepoznajNumeru(Folder folder, Numera n, Label dugme) {
-        dugme.setText(Tekst.razmaknuto("TRAZIM..."));
-        dugme.setDisable(true);
-        CompletableFuture.supplyAsync(() -> {
-            try {
-                return prepoznavanje.prepoznajFajl(n.putanja());
-            } catch (PrepoznajService.Neuspeh e) {
-                return e;
-            }
-        }).thenAccept(ishod -> Platform.runLater(() -> {
-            dugme.setDisable(false);
-            dugme.setText(Tekst.razmaknuto("PREPOZNAJ"));
-            if (!(ishod instanceof Pesma p)) {
-                new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.INFORMATION,
-                        ((PrepoznajService.Neuspeh) ishod).getMessage()).show();
-                return;
-            }
-            var pitanje = new javafx.scene.control.Alert(
-                    javafx.scene.control.Alert.AlertType.CONFIRMATION,
-                    "Prepoznato:\n\n" + p.izvodjac() + " - " + p.naslov()
-                    + "\n\nUpisati u tag fajla?",
-                    javafx.scene.control.ButtonType.YES, javafx.scene.control.ButtonType.NO);
-            pitanje.setHeaderText(null);
-            pitanje.showAndWait().ifPresent(odgovor -> {
-                if (odgovor != javafx.scene.control.ButtonType.YES) {
-                    return;
-                }
-                try {
-                    its.kvizradio.lokalno.Tagovi.upisi(n, p);
-                    zabelezi("Tag upisan: " + n.putanja());
-                    otvoriFolder(biblioteka.folder(folder.naziv(), folder.putanja()));
-                } catch (Exception e) {
-                    zabelezi("ERROR: tag nije upisan (" + e.getMessage() + ")");
-                    new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR,
-                            "Tag nije upisan: " + e.getMessage()).show();
-                }
-            });
-        }));
+    /** Desni klik na pesmu: u red na kraj, ili odmah iza one koja ide. */
+    private void meniNumere(Folder folder, Numera n, HBox red) {
+        var meni = new javafx.scene.control.ContextMenu();
+        javafx.scene.control.MenuItem naKraj = new javafx.scene.control.MenuItem("Dodaj u red");
+        naKraj.setOnAction(e -> {
+            red(folder).dodaj(List.of(n));
+            tekuciRed = red(folder);
+            tekuciFolder = folder.naziv();
+            osveziPlejlistu();
+        });
+        javafx.scene.control.MenuItem sledeca = new javafx.scene.control.MenuItem("Pusti sledecu");
+        sledeca.setOnAction(e -> {
+            red(folder).ubaciSledecu(n);
+            tekuciRed = red(folder);
+            tekuciFolder = folder.naziv();
+            osveziPlejlistu();
+        });
+        meni.getItems().addAll(naKraj, sledeca);
+        meni.show(red, javafx.geometry.Side.BOTTOM, 0, 0);
     }
 
     private RedSviranja red(Folder folder) {
@@ -638,6 +608,7 @@ public class KvizRadioApp extends Application {
         }
         tekuciRed = red(folder);
         tekuciFolder = folder.naziv();
+        osveziPlejlistu();
         Numera n = tekuciRed.trenutna() != null ? tekuciRed.trenutna() : tekuciRed.sledeca();
         if (n != null) {
             pustiNumeru(n);
@@ -650,10 +621,83 @@ public class KvizRadioApp extends Application {
         tekucaNumera = n;
         izabrana = null;
         bar.lokalniRezim(true);
-        bar.ponudiPrepoznavanje(!n.imaTag());
         bar.prikaziLokalnu(n.naslov(), n.izvodjac(), tekuciFolder);
         player.pustiFajl(n.putanja());
+        osveziPlejlistu();
         // spisak pokazuje koja pesma ide, pa se posle promene precrtava
+        if (vrstaPrikaza == Sekcija.Vrsta.LOKALNE_PESME) {
+            nacrtajPesme(otvoreniFolder, pretraga.getText());
+        }
+    }
+
+    // ---------------------------------------------------------- red sviranja
+
+    /** Panel desno prikazuje tekuci red; bez reda se sam sklanja. */
+    private void osveziPlejlistu() {
+        plejlista.osvezi(tekuciFolder, tekuciRed);
+    }
+
+    private void pustiIzReda(int index) {
+        if (tekuciRed == null) {
+            return;
+        }
+        Numera n = tekuciRed.postaviNa(index);
+        if (n != null) {
+            pustiNumeru(n);
+        }
+    }
+
+    private void pomeriURedu(int od, int na) {
+        if (tekuciRed == null) {
+            return;
+        }
+        tekuciRed.pomeri(od, na);
+        osveziPlejlistu();
+    }
+
+    /** Izbacena pesma koja upravo ide - red ide dalje, ne staje. */
+    private void izbaciIzReda(int index) {
+        if (tekuciRed == null) {
+            return;
+        }
+        boolean isla = index == tekuciRed.mesto();
+        tekuciRed.ukloni(index);
+        if (tekuciRed.prazan()) {
+            isprazniRed();
+            return;
+        }
+        if (isla) {
+            sledecaNumera();
+        }
+        osveziPlejlistu();
+        if (vrstaPrikaza == Sekcija.Vrsta.LOKALNE_PESME) {
+            nacrtajPesme(otvoreniFolder, pretraga.getText());
+        }
+    }
+
+    private void mesajRed(boolean da) {
+        if (tekuciRed == null) {
+            return;
+        }
+        tekuciRed.nasumicno(da);
+        osveziPlejlistu();
+    }
+
+    /**
+     * Praznjenje reda zaustavlja i sviranje - inace bi pesma isla, a panel bio
+     * prazan. Folder time gubi zapamceno mesto, pa sledeci klik krece iznova.
+     */
+    private void isprazniRed() {
+        if (tekuciRed != null) {
+            redovi.values().remove(tekuciRed);
+            tekuciRed.isprazni();
+        }
+        tekuciRed = null;
+        tekucaNumera = null;
+        tekuciFolder = "";
+        player.stop();
+        bar.lokalniRezim(false);
+        osveziPlejlistu();
         if (vrstaPrikaza == Sekcija.Vrsta.LOKALNE_PESME) {
             nacrtajPesme(otvoreniFolder, pretraga.getText());
         }
@@ -731,9 +775,9 @@ public class KvizRadioApp extends Application {
         otkaziPrepoznavanje();
         skrol.requestFocus();
         bar.lokalniRezim(false);
-        bar.ponudiPrepoznavanje(false);
         tekucaNumera = null;
         tekuciRed = null;
+        osveziPlejlistu();
         izabrana = s;
         player.pusti(s);
         // brojac klikova je API-ju znak da je stanica ziva; ne sme da drzi UI
@@ -744,6 +788,11 @@ public class KvizRadioApp extends Application {
         if (player.lokalni()) {
             // lokalna pesma ima kraj, pa dugme pauzira umesto da zaustavlja
             player.pauza(player.stanje() != PlayerService.Stanje.PAUZA);
+            return;
+        }
+        // posle fejda lokalna pesma vise ne ide, ali je i dalje izabrana
+        if (player.stanje() == PlayerService.Stanje.STOP && tekucaNumera != null) {
+            pustiNumeru(tekucaNumera);
             return;
         }
         if (player.stanje() != PlayerService.Stanje.STOP) {
@@ -791,12 +840,10 @@ public class KvizRadioApp extends Application {
                 zabelezi("Prepoznato: " + p.izvodjac() + " - " + p.naslov());
                 player.postaviPesmu(p);
             } else {
-                String poruka = ((PrepoznajService.Neuspeh) ishod).getMessage();
-                zabelezi("Prepoznavanje: " + poruka);
-                // show(), ne showAndWait(): obavestenje ne sme da zamrzne FX nit
-                // dok muzika ide - zatvara se kad voditelj stigne
-                new javafx.scene.control.Alert(
-                        javafx.scene.control.Alert.AlertType.INFORMATION, poruka).show();
+                // tiho: neuspeh ide samo u log, dugme je vec vraceno u
+                // pocetno stanje pa moze odmah ponovo da se proba
+                zabelezi("Prepoznavanje: "
+                        + ((PrepoznajService.Neuspeh) ishod).getMessage());
             }
         }));
     }

@@ -274,9 +274,12 @@ public final class PlayerService {
     /**
      * Postepeno utisavanje pa stop. Jacina se na kraju vraca na pocetnu, jer je
      * fade radnja nad ovim pustanjem, a ne nova podesenost aparata.
+     *
+     * Lokalni fajl nema {@code zeljena} - tamo je znak da nesto ide to sto je
+     * {@code lokalni} podignut.
      */
     public void fadeOut(int trajanjeMs) {
-        if (zeljena == null) {
+        if (zeljena == null && !lokalni) {
             return;
         }
         otkaziFade();
@@ -292,6 +295,7 @@ public final class PlayerService {
             postaviNaPlayer(Math.max(0, nova));
             if (korak[0] >= koraka) {
                 zeljena = null;
+                lokalni = false;
                 otkaziPovezivanje();
                 plejer.controls().stop();
                 jacina = pocetna;
