@@ -85,13 +85,88 @@ public final class RadioBrowserService {
 
         String telo = kesirano(kljuc("stanice", tag, drzava, ime, String.valueOf(koliko)), u.toString());
         List<Stanica> stanice = new ArrayList<>();
+        // isti strim ume da stoji pod dva uuid-a (javni servisi, prijave iz dva
+        // izvora) - u mrezi kartica bi to bila ista stanica dvaput
+        java.util.Set<String> videniUrl = new java.util.HashSet<>();
         for (Object o : Json.lista(Json.parsiraj(telo == null ? "[]" : telo))) {
             Stanica s = Stanica.iz(o);
-            if (s.upotrebljiva()) {
+            if (s.upotrebljiva() && videniUrl.add(s.url())) {
                 stanice.add(s);
             }
         }
         return stanice;
+    }
+
+    /**
+     * Stavka menija u listu stanica. Tagovi su ILI, a API zna samo jedan tag po
+     * upitu, pa se pretrage spajaju: ista stanica iz dve pretrage broji se
+     * jednom, a duplikati po URL-u (isti strim pod dva uuid-a, cesto kod
+     * javnih servisa) se izbacuju da mreza kartica ne bude ista stvar dvaput.
+     */
+    public List<Stanica> pretraga(Sekcija sekcija, int koliko) {
+        if (sekcija.tagovi().isEmpty()) {
+            return pretraga(null, sekcija.drzava(), null, koliko);
+        }
+        List<Stanica> spojene = new ArrayList<>();
+        java.util.Set<String> videni = new java.util.HashSet<>();
+        for (String tag : sekcija.tagovi()) {
+            for (Stanica s : pretraga(tag, sekcija.drzava(), null, koliko)) {
+                if (videni.add(s.uuid()) && videni.add(s.url())) {
+                    spojene.add(s);
+                }
+            }
+        }
+        spojene.sort((a, b) -> Integer.compare(b.klikovi(), a.klikovi()));
+        return spojene.size() > koliko ? new ArrayList<>(spojene.subList(0, koliko)) : spojene;
+    }
+
+    /**
+     * Mreze bez reklama, grupisane po mrezi.
+     *
+     * API ne zna sta je "bez reklama", pa se do njih dolazi pretragom po imenu
+     * mreze - a takva pretraga vraca i tudje stanice sa slicnim imenom, zato se
+     * u odeljak mreze uzima samo ono cije ime stvarno sadrzi trazeni pojam.
+     *
+     * @param samoMreza naziv jedne mreze, ili null za sve
+     */
+    public List<Odeljak> bezReklama(BezReklama konfiguracija, String samoMreza, int koliko) {
+        List<Odeljak> odeljci = new ArrayList<>();
+        java.util.Set<String> videni = new java.util.HashSet<>();
+
+        for (BezReklama.Mreza mreza : konfiguracija.mreze()) {
+            if (samoMreza != null && !samoMreza.equals(mreza.naziv())) {
+                continue;
+            }
+            List<Stanica> nadjene = new ArrayList<>();
+            for (String upit : mreza.upiti()) {
+                for (Stanica s : pretraga(null, null, upit, koliko)) {
+                    boolean pravaMreza = s.ime().toLowerCase().contains(upit.toLowerCase());
+                    if (pravaMreza && videni.add(s.uuid()) && videni.add(s.url())) {
+                        nadjene.add(s);
+                    }
+                }
+            }
+            nadjene.sort((a, b) -> a.ime().compareToIgnoreCase(b.ime()));
+            if (!nadjene.isEmpty()) {
+                odeljci.add(new Odeljak(mreza.naziv(), nadjene));
+            }
+        }
+
+        if (samoMreza == null) {
+            List<Stanica> ostale = new ArrayList<>();
+            for (String tag : konfiguracija.tagovi()) {
+                for (Stanica s : pretraga(tag, null, null, koliko)) {
+                    if (videni.add(s.uuid()) && videni.add(s.url())) {
+                        ostale.add(s);
+                    }
+                }
+            }
+            ostale.sort((a, b) -> Integer.compare(b.klikovi(), a.klikovi()));
+            if (!ostale.isEmpty()) {
+                odeljci.add(new Odeljak("Ostale bez reklama", ostale));
+            }
+        }
+        return odeljci;
     }
 
     /** Najzastupljeniji zanrovi, za sidebar. */

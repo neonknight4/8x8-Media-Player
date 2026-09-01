@@ -1,0 +1,16 @@
+{
+  "_opis": [
+    "Mreze poznate kao bez reklama. Tvoja kopija je u %APPDATA%\\KvizRadio",
+    "odnosno ~/.config/KvizRadio - dodaj mrezu i pojavi se u sidebar-u,",
+    "bez rekompajliranja.",
+    "naziv  = kako pise u meniju i iznad grupe kartica",
+    "upiti  = pretrage po imenu stanice (name=...) koje tu mrezu vracaju",
+    "tagovi = dodatne tag pretrage koje ulaze u istu sekciju, pod 'Ostale'"
+  ],
+  "tagovi": ["commercial-free"],
+  "mreze": [
+    { "naziv": "Radio Caprice", "upiti": ["Radio Caprice"] },
+    { "naziv": "SomaFM",        "upiti": ["SomaFM", "Soma FM"] },
+    { "naziv": "Radio Paradise", "upiti": ["Radio Paradise"] }
+  ]
+}
