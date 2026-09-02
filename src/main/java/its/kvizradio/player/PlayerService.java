@@ -65,6 +65,17 @@ public final class PlayerService {
     private static final String MREZNI_BAFER = ":network-caching=3000";
 
     /**
+     * HLS strim (RTS-ovi m3u8) dolazi u .ts komadima od desetak sekundi, a svaki
+     * komad pocinje continuity counter-om od nule. VLC to cita kao prekid u
+     * prenosu, resetuje sat i ubaci tisinu - mereno na Radiju Beograd 202: devet
+     * prekida od ~130ms u sto sekundi, dakle na svakih pet do deset sekundi. Bez
+     * provere brojaca nema ni jednog (mereno istim merenjem).
+     *
+     * Obicnom Icecast strimu ne menja nista - tamo TS-a nema.
+     */
+    private static final String BEZ_CC_PROVERE = ":no-ts-cc-check";
+
+    /**
      * Spektar: VLC-ov "visual" modul crta spektar kao sliku, a mi iz te slike
      * citamo samo visine po opsezima - sama slika se nigde ne prikazuje, trake
      * crta UI u bojama aplikacije.
@@ -251,7 +262,7 @@ public final class PlayerService {
         javi(Stanje.POVEZIVANJE, "povezujem se...");
         izvrsi(() -> {
             plejer.controls().stop();
-            plejer.media().play(stanica.url(), MREZNI_BAFER);
+            plejer.media().play(stanica.url(), MREZNI_BAFER, BEZ_CC_PROVERE);
         });
     }
 
@@ -491,7 +502,7 @@ public final class PlayerService {
             }
             javi(Stanje.POVEZIVANJE, "povezujem se ponovo...");
             plejer.controls().stop();
-            plejer.media().play(stanica.url(), MREZNI_BAFER);
+            plejer.media().play(stanica.url(), MREZNI_BAFER, BEZ_CC_PROVERE);
         }, sekundi, TimeUnit.SECONDS);
     }
 
