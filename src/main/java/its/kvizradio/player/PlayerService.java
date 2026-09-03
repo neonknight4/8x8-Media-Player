@@ -192,7 +192,46 @@ public final class PlayerService {
         if (vlc != null) {
             System.setProperty("jna.library.path", vlc.toString());
             log.accept("libvlc uz aplikaciju: " + vlc);
+            return;
         }
+        java.nio.file.Path sistemski = nadjiSistemskiLibVlc();
+        if (sistemski != null) {
+            System.setProperty("jna.library.path", sistemski.toString());
+            log.accept("libvlc iz sistema: " + sistemski);
+        }
+    }
+
+    /**
+     * Folder sistemskog libvlc-a. Trazi se sam iako bi ga vlcj nasao, jer je
+     * njegova potraga po sistemu opasna: provajderi se pitaju po prioritetu, a
+     * UserDirDirectoryProvider (radni folder) ide pre
+     * LinuxWellKnownDirectoryProvider-a (/usr/lib...) - i pretraga svakog
+     * foldera je rekurzivna. Kad se aplikacija digne iz GNOME menija, radni
+     * folder je $HOME, pa vlcj proseta celo kucno stablo pre nego stigne do
+     * /usr/lib. Na masini sa nekoliko stotina hiljada fajlova to zaglavi
+     * JavaFX nit u konstruktoru MediaPlayerFactory i prozor se nikad ne
+     * pojavi. Sa postavljenim jna.library.path potraga staje na prvom
+     * provajderu i nista se ne pretrazuje.
+     */
+    private static java.nio.file.Path nadjiSistemskiLibVlc() {
+        java.util.List<java.nio.file.Path> kandidati = new java.util.ArrayList<>();
+        // Debian/Ubuntu multiarch: /usr/lib/x86_64-linux-gnu, aarch64-linux-gnu...
+        try (java.util.stream.Stream<java.nio.file.Path> s
+                = java.nio.file.Files.list(java.nio.file.Path.of("/usr/lib"))) {
+            s.filter(d -> d.getFileName().toString().endsWith("-linux-gnu"))
+                    .forEach(kandidati::add);
+        } catch (java.io.IOException | RuntimeException e) {
+            // nema /usr/lib (Windows) - ostaju fiksni kandidati ispod
+        }
+        kandidati.add(java.nio.file.Path.of("/usr/lib64"));
+        kandidati.add(java.nio.file.Path.of("/usr/lib"));
+        kandidati.add(java.nio.file.Path.of("/usr/local/lib"));
+        for (java.nio.file.Path d : kandidati) {
+            if (java.nio.file.Files.isRegularFile(d.resolve("libvlc.so.5"))) {
+                return d;
+            }
+        }
+        return null;
     }
 
     // --------------------------------------------------------------- radnje
