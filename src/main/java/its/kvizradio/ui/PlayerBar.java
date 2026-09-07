@@ -9,6 +9,7 @@ import javafx.animation.FadeTransition;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
@@ -70,6 +71,8 @@ public final class PlayerBar extends StackPane {
     private final Label ukupno = new Label("0:00");
     private HBox redPremotavanja;
     private boolean lokalno;
+    /** Da li u redu stoji prepoznata pesma - samo se ona klikom ponistava. */
+    private boolean prepoznato;
     private final FadeTransition treperenje;
 
     private final Spektar spektar;
@@ -81,7 +84,8 @@ public final class PlayerBar extends StackPane {
     private final Line precrtano = new Line(1, 15, 17, 1);
 
     public PlayerBar(Runnable naDugme, Runnable naFade, Consumer<Integer> naJacinu,
-            Runnable naMute, Runnable naPrepoznavanje, Supplier<float[]> nivoi, int traka,
+            Runnable naMute, Runnable naPrepoznavanje, Runnable naPonistavanje,
+            Supplier<float[]> nivoi, int traka,
             Runnable naPrethodnu, Runnable naSledecu, Consumer<Double> naPremotavanje) {
 
         this.prethodna = maloDugme(false, naPrethodnu);
@@ -101,7 +105,7 @@ public final class PlayerBar extends StackPane {
 
         Region razmak = new Region();
         HBox.setHgrow(razmak, Priority.ALWAYS);
-        HBox strane = new HBox(sada(naPrepoznavanje), razmak, desno(naFade, naMute));
+        HBox strane = new HBox(sada(naPrepoznavanje, naPonistavanje), razmak, desno(naFade, naMute));
         strane.setAlignment(Pos.CENTER);
 
         HBox prevoz = new HBox(18, prethodna, veliko(naDugme), sledeca);
@@ -158,6 +162,7 @@ public final class PlayerBar extends StackPane {
         pesmaIzvodjac.setText(izvodjac);
         // sa diska se ne prepoznaje - naslov je vec u tagu ili u imenu fajla
         pokazi(prepoznaj, false);
+        prepoznato = false;
     }
 
     /** Pozicija u numeri: traka i vreme. */
@@ -276,10 +281,14 @@ public final class PlayerBar extends StackPane {
         pokazi(pesmaIzvodjac, znamo && !p.izvodjac().isBlank());
         pokazi(pesmaNaslov, znamo);
         pokazi(prepoznaj, radi && !znamo);
+        prepoznato = znamo && Pesma.PREPOZNATO.equals(p.izvor());
+        for (Label l : new Label[] {nota, pesmaIzvodjac, pesmaNaslov}) {
+            l.setCursor(prepoznato ? Cursor.HAND : Cursor.DEFAULT);
+        }
         if (znamo) {
             pesmaIzvodjac.setText(p.izvodjac() + "  —");
             pesmaNaslov.setText(p.naslov());
-            Sidebar.postaviKlasu(nota, "prepoznato", Pesma.PREPOZNATO.equals(p.izvor()));
+            Sidebar.postaviKlasu(nota, "prepoznato", prepoznato);
         }
     }
 
@@ -310,7 +319,7 @@ public final class PlayerBar extends StackPane {
         return s.bitrate() > 0 ? d + s.bitrate() + " kbps" : d + s.kodek();
     }
 
-    private HBox sada(Runnable naPrepoznavanje) {
+    private HBox sada(Runnable naPrepoznavanje, Runnable naPonistavanje) {
         prsten.setFill(Color.web("#101010"));
         inicijali.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
         StackPane avatar = new StackPane(prsten, inicijali);
@@ -327,6 +336,15 @@ public final class PlayerBar extends StackPane {
         pesmaIzvodjac.getStyleClass().add("pesma-izvodjac");
         pesmaNaslov.getStyleClass().add("pesma-naslov");
         pesmaNaslov.setMaxWidth(270);
+        Tooltip vrati = new Tooltip("Klikni da ponovo prepoznas pesmu");
+        for (Label l : new Label[] {nota, pesmaIzvodjac, pesmaNaslov}) {
+            l.setTooltip(vrati);
+            l.setOnMouseClicked(e -> {
+                if (prepoznato) {
+                    naPonistavanje.run();
+                }
+            });
+        }
 
         prepoznaj.getStyleClass().add("prepoznaj-dugme");
         prepoznaj.setTooltip(new Tooltip("Prepoznaj pesmu koja trenutno ide"));
