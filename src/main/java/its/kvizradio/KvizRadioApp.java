@@ -122,7 +122,7 @@ public class KvizRadioApp extends Application {
         prepoznavanje = new PrepoznajService(
                 konf.getProperty("prepoznavanje.python", ""), this::zabelezi);
         bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, this::jacina,
-                this::prebaciPrigusenje, this::prepoznajPesmu,
+                this::prebaciPrigusenje, this::prepoznajPesmu, this::ponistiPrepoznatu,
                 () -> player.nivoi(), PlayerService.TRAKA,
                 this::prethodnaNumera, this::sledecaNumera, player::premotaj);
 
@@ -846,6 +846,11 @@ public class KvizRadioApp extends Application {
                         + ((PrepoznajService.Neuspeh) ishod).getMessage());
             }
         }));
+    }
+
+    /** Klik na prepoznatu pesmu je brise, pa se opet nudi dugme PREPOZNAJ. */
+    private void ponistiPrepoznatu() {
+        player.postaviPesmu(null);
     }
 
     /** Promena stanice ili zaustavljanje - osluskivanje vise nema smisla. */
