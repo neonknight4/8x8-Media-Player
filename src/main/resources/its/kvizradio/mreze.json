@@ -9,6 +9,42 @@
   ],
   "tagovi": ["commercial-free"],
   "mreze": [
+    { "naziv": "181.FM hitovi", "upiti": [
+        "181.FM - Power 181",
+        "181.FM - Party 181",
+        "181.FM - Star 90's",
+        "181.FM - Energy 98",
+        "181.FM - Energy 93",
+        "181.FM - 90's Dance",
+        "181.FM - Classic Hits",
+        "181.FM - Awesome 80's",
+        "181.FM - UK top 40",
+        "181.FM - Jammin 181"
+    ] },
+    { "naziv": "RauteMusik (rm.fm)", "upiti": [
+        "CHARTHITS.FM",
+        "__CLUB__",
+        "__90S__",
+        "__GOLDIES__",
+        "BIGCITYBEATS",
+        "RauteMusik House",
+        "RauteMusik 90s",
+        "RauteMusik Main"
+    ] },
+    { "naziv": "Dance Wave", "upiti": ["Dance Wave"] },
+    { "naziv": "Javni servisi - hitovi", "upiti": [
+        "1LIVE",
+        "SWR3",
+        "Bayern 3",
+        "N-JOY",
+        "NPO 3FM",
+        "NRK P3",
+        "DR P3",
+        "Sveriges Radio P3",
+        "Radio Swiss Pop",
+        "Mouv'",
+        "BBC Radio 1"
+    ] },
     { "naziv": "Radio Caprice", "upiti": ["Radio Caprice"] },
     { "naziv": "SomaFM",        "upiti": ["SomaFM", "Soma FM"] },
     { "naziv": "Radio Paradise", "upiti": ["Radio Paradise"] }
