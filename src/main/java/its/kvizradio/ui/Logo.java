@@ -361,9 +361,12 @@ public final class Logo {
      */
     private static StackPane pogled(Image slika, double precnik) {
         double s = precnik - 4;
+        // slika ide u 80% precnika, ne u ceo krug: logoi su cesto siroki i bez
+        // sopstvene margine, pa su im krajevi zavrsavali pod krugom
+        double stane = precnik * 0.8;
         ImageView pogled = new ImageView(slika);
-        pogled.setFitWidth(s);
-        pogled.setFitHeight(s);
+        pogled.setFitWidth(stane);
+        pogled.setFitHeight(stane);
         pogled.setPreserveRatio(true);
         pogled.setSmooth(true);
 
@@ -392,10 +395,9 @@ public final class Logo {
         Rectangle leva = skoljka(-r, visina, sirina, boja);
         Rectangle desna = skoljka(r - sirina, visina, sirina, boja);
 
-        Group g = new Group(luk, leva, desna);
-        // luk je nacrtan oko nule, pa se ceo crtez spusta da stoji po sredini
-        g.setTranslateY(precnik * 0.06);
-        return g;
+        // bez pomeranja: StackPane centrira Group po njegovim granicama, pa je
+        // svako "doterivanje" po visini cista greska
+        return new Group(luk, leva, desna);
     }
 
     private static Rectangle skoljka(double x, double visina, double sirina, Color boja) {
