@@ -91,11 +91,11 @@ public final class PlayerBar extends StackPane {
         this.prethodna = maloDugme(false, naPrethodnu);
         this.sledeca = maloDugme(true, naSledecu);
 
-        // deset traka, ne svih dvadeset opsega: mirnije je za oko
-        this.spektar = new Spektar(Math.min(10, traka), 24);
+        // svih dvadeset opsega, uske trake - gusce se mrda nego sazeto na deset
+        this.spektar = new Spektar(traka, 52);
         // dvadeset kadrova u sekundi je dovoljno da oko vidi tecno, a ne trosi
         this.osvezavanjeSpektra = new Timeline(
-                new javafx.animation.KeyFrame(Duration.millis(50), e -> spektar.crtaj(nivoi.get())));
+                new javafx.animation.KeyFrame(Duration.millis(33), e -> spektar.crtaj(nivoi.get())));
         this.osvezavanjeSpektra.setCycleCount(Animation.INDEFINITE);
 
         getStyleClass().add("player-bar");
@@ -105,8 +105,12 @@ public final class PlayerBar extends StackPane {
 
         Region razmak = new Region();
         HBox.setHgrow(razmak, Priority.ALWAYS);
-        HBox strane = new HBox(sada(naPrepoznavanje, naPonistavanje), razmak, desno(naFade, naMute));
+        // spektar stoji uz podatke o stanici, a ne uz jacinu: desno bi ovoliki
+        // naleteo na veliko dugme, a ovde je prostor ionako prazan
+        HBox strane = new HBox(sada(naPrepoznavanje, naPonistavanje), spektar, razmak,
+                desno(naFade, naMute));
         strane.setAlignment(Pos.CENTER);
+        HBox.setMargin(spektar, new Insets(0, 0, 0, 34));
 
         HBox prevoz = new HBox(18, prethodna, veliko(naDugme), sledeca);
         prevoz.setAlignment(Pos.CENTER);
@@ -154,8 +158,8 @@ public final class PlayerBar extends StackPane {
         meta.setText(folder == null ? "" : Tekst.razmaknuto(folder.toUpperCase()));
         Sidebar.postaviKlasu(ime, "prazno", false);
         inicijali.setText("\u266B");
-        inicijali.setStyle("-fx-text-fill: #D4AF37; -fx-font-size: 15px;");
-        prsten.setStroke(Color.web("#D4AF37", 0.45));
+        inicijali.setStyle("-fx-text-fill: #E3B341; -fx-font-size: 15px;");
+        prsten.setStroke(Color.web("#E3B341", 0.45));
         pokazi(nota, !izvodjac.isBlank());
         pokazi(pesmaIzvodjac, !izvodjac.isBlank());
         pokazi(pesmaNaslov, false);
@@ -188,7 +192,7 @@ public final class PlayerBar extends StackPane {
 
     /** Ikonica pored VOL: precrtan zvucnik kad je zvuk prigusen. */
     public void prikaziPrigusenje(boolean prigusen) {
-        zvucnik.setFill(Color.web(prigusen ? "#57544B" : "#D4AF37"));
+        zvucnik.setFill(Color.web(prigusen ? "#6A6E7D" : "#E3B341"));
         talasBlizi.setVisible(!prigusen);
         talasDalji.setVisible(!prigusen);
         precrtano.setVisible(prigusen);
@@ -197,7 +201,7 @@ public final class PlayerBar extends StackPane {
     /** Stanica koja je izabrana ali jos ne svira - da bar ne bude prazan po pokretanju. */
     public void pripremi(Stanica s) {
         if (s != null) {
-            postaviStanicu(s, false);
+            postaviStanicu(s);
         }
     }
 
@@ -205,7 +209,7 @@ public final class PlayerBar extends StackPane {
         boolean radi = st.stanje() != PlayerService.Stanje.STOP;
         // u lokalnom rezimu naziv postavlja prikaziLokalnu, jer stanice nema
         if (!lokalno) {
-            postaviStanicu(st.stanica(), radi);
+            postaviStanicu(st.stanica());
             prikaziPesmu(st.pesma(), radi);
         }
 
@@ -225,7 +229,7 @@ public final class PlayerBar extends StackPane {
             }
             case GRESKA -> {
                 tekst = "PONOVO SE POVEZUJEM";
-                klasa = "radi";
+                klasa = "greska";
                 pulsira = true;
             }
             default -> {
@@ -237,6 +241,7 @@ public final class PlayerBar extends StackPane {
         status.setText(Tekst.razmaknuto(tekst));
         Sidebar.postaviKlasu(status, "svira", "svira".equals(klasa));
         Sidebar.postaviKlasu(status, "radi", "radi".equals(klasa));
+        Sidebar.postaviKlasu(status, "greska", "greska".equals(klasa));
         if (pulsira) {
             treperenje.play();
         } else {
@@ -257,6 +262,9 @@ public final class PlayerBar extends StackPane {
         }
         fade.setDisable(!radi);
         Sidebar.postaviKlasu(fade, "u-toku", false);
+        if (!radi) {
+            fade.setText(Tekst.razmaknuto("FADE OUT"));
+        }
     }
 
     /** Dok prepoznavanje traje - servisu treba dvadesetak sekundi. */
@@ -301,17 +309,14 @@ public final class PlayerBar extends StackPane {
         l.setManaged(vidljiv);
     }
 
-    private void postaviStanicu(Stanica s, boolean radi) {
+    private void postaviStanicu(Stanica s) {
         boolean ima = s != null;
         ime.setText(ima ? s.ime() : "Nijedna stanica");
         Sidebar.postaviKlasu(ime, "prazno", !ima);
         inicijali.setText(ima ? Tekst.inicijali(s.ime()) : "—");
-        inicijali.setStyle(ima ? "-fx-text-fill: #D4AF37;" : "-fx-text-fill: #3A3833;");
-        prsten.setStroke(Color.web(ima ? "#D4AF37" : "#242424", ima ? 0.45 : 1));
+        inicijali.setStyle(ima ? "-fx-text-fill: #E3B341;" : "-fx-text-fill: #474B58;");
+        prsten.setStroke(Color.web(ima ? "#E3B341" : "#242833", ima ? 0.45 : 1));
         meta.setText(ima ? opis(s) : "");
-        if (!radi && ima) {
-            fade.setText(Tekst.razmaknuto("FADE OUT"));
-        }
     }
 
     private static String opis(Stanica s) {
@@ -320,7 +325,7 @@ public final class PlayerBar extends StackPane {
     }
 
     private HBox sada(Runnable naPrepoznavanje, Runnable naPonistavanje) {
-        prsten.setFill(Color.web("#101010"));
+        prsten.setFill(Color.web("#0F1118"));
         inicijali.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
         StackPane avatar = new StackPane(prsten, inicijali);
 
@@ -367,12 +372,12 @@ public final class PlayerBar extends StackPane {
     }
 
     private StackPane veliko(Runnable naDugme) {
-        Circle krug = new Circle(31, Color.web("#D4AF37"));
-        krug.setEffect(new DropShadow(26, Color.web("#D4AF37", 0.28)));
+        Circle krug = new Circle(31, Color.web("#E3B341"));
+        krug.setEffect(new DropShadow(26, Color.web("#E3B341", 0.28)));
 
-        trougao.setFill(Color.web("#0A0A0A"));
+        trougao.setFill(Color.web("#0A0B10"));
         trougao.setTranslateX(3);
-        kvadrat.setFill(Color.web("#0A0A0A"));
+        kvadrat.setFill(Color.web("#0A0B10"));
         kvadrat.setArcWidth(4);
         kvadrat.setArcHeight(4);
         kvadrat.setVisible(false);
@@ -380,7 +385,7 @@ public final class PlayerBar extends StackPane {
         pauzaIkona.setAlignment(Pos.CENTER);
         pauzaIkona.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
         for (javafx.scene.Node n : pauzaIkona.getChildren()) {
-            ((Rectangle) n).setFill(Color.web("#0A0A0A"));
+            ((Rectangle) n).setFill(Color.web("#0A0B10"));
             ((Rectangle) n).setArcWidth(2);
             ((Rectangle) n).setArcHeight(2);
         }
@@ -390,8 +395,8 @@ public final class PlayerBar extends StackPane {
         dugme.setMaxSize(62, 62);
         dugme.getStyleClass().add("veliko-dugme");
         dugme.setOnMouseClicked(e -> naDugme.run());
-        dugme.setOnMouseEntered(e -> krug.setFill(Color.web("#F0D060")));
-        dugme.setOnMouseExited(e -> krug.setFill(Color.web("#D4AF37")));
+        dugme.setOnMouseEntered(e -> krug.setFill(Color.web("#F7D477")));
+        dugme.setOnMouseExited(e -> krug.setFill(Color.web("#E3B341")));
         return dugme;
     }
 
@@ -404,7 +409,7 @@ public final class PlayerBar extends StackPane {
         jacinaBroj.getStyleClass().add("jacina-broj");
         jacinaBroj.setMinWidth(30);
 
-        HBox vol = new HBox(12, spektar, mute(naMute), oznaka, jacina, jacinaBroj);
+        HBox vol = new HBox(12, mute(naMute), oznaka, jacina, jacinaBroj);
         vol.setAlignment(Pos.CENTER);
 
         fade.getStyleClass().add("fade-dugme");
@@ -421,14 +426,14 @@ public final class PlayerBar extends StackPane {
 
     /** Prethodna/sledeca numera; krug sa strelicom i crticom, kao na plejerima. */
     private StackPane maloDugme(boolean unapred, Runnable akcija) {
-        Circle krug = new Circle(17, Color.web("#141414"));
-        krug.setStroke(Color.web("#D4AF37", 0.4));
+        Circle krug = new Circle(17, Color.web("#16181F"));
+        krug.setStroke(Color.web("#E3B341", 0.4));
 
         Polygon strelica = unapred
                 ? new Polygon(0, 0, 0, 14, 10, 7)
                 : new Polygon(10, 0, 10, 14, 0, 7);
-        strelica.setFill(Color.web("#D4AF37"));
-        Rectangle crtica = new Rectangle(2.5, 14, Color.web("#D4AF37"));
+        strelica.setFill(Color.web("#E3B341"));
+        Rectangle crtica = new Rectangle(2.5, 14, Color.web("#E3B341"));
         HBox ikona = unapred ? new HBox(2, strelica, crtica) : new HBox(2, crtica, strelica);
         ikona.setAlignment(Pos.CENTER);
         ikona.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
@@ -436,8 +441,8 @@ public final class PlayerBar extends StackPane {
         StackPane dugme = new StackPane(krug, ikona);
         dugme.getStyleClass().add("mute-dugme");
         dugme.setOnMouseClicked(e -> akcija.run());
-        dugme.setOnMouseEntered(e -> krug.setStroke(Color.web("#F0D060")));
-        dugme.setOnMouseExited(e -> krug.setStroke(Color.web("#D4AF37", 0.4)));
+        dugme.setOnMouseEntered(e -> krug.setStroke(Color.web("#F7D477")));
+        dugme.setOnMouseExited(e -> krug.setStroke(Color.web("#E3B341", 0.4)));
         dugme.setVisible(false);
         dugme.setManaged(false);
         return dugme;
@@ -479,14 +484,14 @@ public final class PlayerBar extends StackPane {
      * svakom fontu, a bar mora da izgleda isto i na Windowsu i u razvoju.
      */
     private StackPane mute(Runnable naMute) {
-        zvucnik.setFill(Color.web("#D4AF37"));
+        zvucnik.setFill(Color.web("#E3B341"));
         for (Arc talas : new Arc[]{talasBlizi, talasDalji}) {
             talas.setType(ArcType.OPEN);
             talas.setFill(null);
-            talas.setStroke(Color.web("#D4AF37"));
+            talas.setStroke(Color.web("#E3B341"));
             talas.setStrokeWidth(1.6);
         }
-        precrtano.setStroke(Color.web("#D4AF37"));
+        precrtano.setStroke(Color.web("#E3B341"));
         precrtano.setStrokeWidth(1.8);
         precrtano.setVisible(false);
 

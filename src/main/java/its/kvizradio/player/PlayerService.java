@@ -76,18 +76,24 @@ public final class PlayerService {
     private static final String BEZ_CC_PROVERE = ":no-ts-cc-check";
 
     /**
-     * Spektar: VLC-ov "visual" modul crta spektar kao sliku, a mi iz te slike
-     * citamo samo visine po opsezima - sama slika se nigde ne prikazuje, trake
-     * crta UI u bojama aplikacije.
+     * Trake u baru: VLC-ov "visual" modul crta talasni oblik kao sliku, a mi iz
+     * te slike citamo otklone - sama slika se nigde ne prikazuje, trake crta UI
+     * u bojama aplikacije.
+     *
+     * Efekt je "scope", a ne "spectrum": spectrum na radiju stoji zakucan uz
+     * vrh. Mereno na tri stanice, sve trake su na 399/512 visine sa odstupanjem
+     * 2.7 - radio je toliko kompresovan da VLC-ove trake udaraju u plafon, a
+     * --spect-amp je vec na minimumu. Isti snimak utisan 30 dB odmah pokaze
+     * oblik i odstupanje 12-27. Scope umesto toga daje otklon talasa, koji se
+     * krece i na najglasnijem strimu.
      *
      * Opcije moraju na fabriku (instancu libvlc-a), ne na medij: kao opcije
      * medija se ne primene i ne stigne nijedan kadar.
      */
-    /** Koliko VLC pojacava spektar; podrazumevano je prejako, sve trake stoje uz vrh. */
-    private static final int POJACANJE = Integer.getInteger("kvizradio.pojacanje", 1);
     private static final int EFEKT_SIRINA = 160;
-    private static final int EFEKT_VISINA = 64;
-    /** VLC bez --spect-80-bands crta dvadeset opsega; toliko i citamo. */
+    /** Scope crta jedan kanal u gornjoj, drugi u donjoj polovini slike. */
+    private static final int EFEKT_VISINA = 128;
+    /** Koliko traka UI crta; slika se deli na toliko kolona. */
     public static final int TRAKA = 20;
 
     private final MediaPlayerFactory fabrika;
@@ -147,10 +153,8 @@ public final class PlayerService {
         pripremiLibVlc(this.log);
 
         this.fabrika = new MediaPlayerFactory(
-                "--audio-visual=visual", "--effect-list=spectrum",
+                "--audio-visual=visual", "--effect-list=scope",
                 "--effect-width=" + EFEKT_SIRINA, "--effect-height=" + EFEKT_VISINA,
-                "--no-spect-80-bands", "--no-spect-show-peaks", "--no-spect-show-base",
-                "--spect-separ=1", "--spect-amp=" + POJACANJE,
                 "--no-video-title-show");
         this.plejer = fabrika.mediaPlayers().newEmbeddedMediaPlayer();
         this.formatKadra = new BufferFormatCallback() {
@@ -397,7 +401,7 @@ public final class PlayerService {
     }
 
     /**
-     * Visine opsega, 0..1, sveze koliko i poslednji kadar spektra. Kad nista ne
+     * Visine traka, 0..1, sveze koliko i poslednji kadar talasa. Kad nista ne
      * svira, sve su nule - pa se trake same spuste.
      */
     public float[] nivoi() {
@@ -405,27 +409,37 @@ public final class PlayerService {
     }
 
     /**
-     * Iz slike spektra u visine: za svaki opseg se trazi najvisi obojen piksel.
-     * Slika je RV32, pa je "obojen" sve sto nije crno.
+     * Iz slike talasa u visine traka: slika se deli na kolone, a u svakoj se
+     * trazi najdalja tacka talasa od njegove nulte linije. Gornja polovina je
+     * jedan kanal, donja drugi, svaki oko svoje sredine; uzima se glasniji.
+     *
+     * Slika je RV32, pa je "tacka talasa" sve sto nije crno - scope crta tanke
+     * i dosta tamne tacke, pa nema praga.
      */
     private static float[] izmeriNivoe(int[] piksela) {
         float[] izmereno = new float[TRAKA];
-        int poTraci = Math.max(1, EFEKT_SIRINA / TRAKA);
+        int poKoloni = Math.max(1, EFEKT_SIRINA / TRAKA);
+        int polovina = EFEKT_VISINA / 2;
+        int sredinaGore = polovina / 2;
+        int sredinaDole = polovina + sredinaGore;
         for (int traka = 0; traka < TRAKA; traka++) {
-            int odX = traka * poTraci;
-            int doX = Math.min(EFEKT_SIRINA, odX + poTraci);
-            int najvisi = EFEKT_VISINA;
+            int odX = traka * poKoloni;
+            int doX = Math.min(EFEKT_SIRINA, odX + poKoloni);
+            int najdalji = 0;
             for (int y = 0; y < EFEKT_VISINA; y++) {
                 int red = y * EFEKT_SIRINA;
+                int otklon = Math.abs(y - (y < polovina ? sredinaGore : sredinaDole));
+                if (otklon <= najdalji) {
+                    continue;
+                }
                 for (int x = odX; x < doX; x++) {
                     if ((piksela[red + x] & 0xFFFFFF) != 0) {
-                        najvisi = y;
-                        y = EFEKT_VISINA;
+                        najdalji = otklon;
                         break;
                     }
                 }
             }
-            izmereno[traka] = 1f - (float) najvisi / EFEKT_VISINA;
+            izmereno[traka] = Math.min(1f, (float) najdalji / sredinaGore);
         }
         return izmereno;
     }
