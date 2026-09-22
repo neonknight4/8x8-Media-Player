@@ -54,10 +54,40 @@ public final class Sidebar extends VBox {
         VBox.setVgrow(skrol, Priority.ALWAYS);
 
         Label sat = new Label();
-        sat.getStyleClass().add("sidebar-podnozje");
+        sat.getStyleClass().add("sat");
         Casovnik.pokreni(sat);
 
-        getChildren().addAll(zaglavlje, skrol, sat);
+        VBox podnozje = new VBox(10, sat, precice());
+        podnozje.getStyleClass().add("sidebar-podnozje");
+
+        getChildren().addAll(zaglavlje, skrol, podnozje);
+    }
+
+    /**
+     * Precice stoje u podnozju menija, a ne iznad donjeg bara: tamo su lebdele
+     * bez oslonca, a ovde ih drzi ivica panela.
+     */
+    private static HBox precice() {
+        String[][] spisak = {
+            {"Space", "pusti"},
+            {"F", "fade"},
+            {"N", "sledeca"},
+            {"\u2191\u2193", "jacina"},
+        };
+        VBox leva = new VBox(5);
+        VBox desna = new VBox(5);
+        for (int i = 0; i < spisak.length; i++) {
+            Label taster = new Label(spisak[i][0]);
+            taster.getStyleClass().add("precica-taster");
+            Label opis = new Label(spisak[i][1]);
+            opis.getStyleClass().add("precica-opis");
+            HBox linija = new HBox(6, taster, opis);
+            linija.setAlignment(Pos.CENTER_LEFT);
+            (i < 2 ? leva : desna).getChildren().add(linija);
+        }
+        HBox box = new HBox(14, leva, desna);
+        box.setAlignment(Pos.CENTER_LEFT);
+        return box;
     }
 
     /** Grupe se postavljaju jednom, pri pokretanju. */

@@ -28,6 +28,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -40,6 +41,9 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
@@ -195,9 +199,21 @@ public class KvizRadioApp extends Application {
             }
         });
 
+        HBox poljePretrage = new HBox(10, lupa(), pretraga);
+        poljePretrage.setAlignment(Pos.CENTER_LEFT);
+        poljePretrage.getStyleClass().add("pretraga-okvir");
+        poljePretrage.setMaxHeight(Region.USE_PREF_SIZE);
+        // okvir ne zna za fokus deteta, pa mu se stanje prenosi rucno
+        pretraga.focusedProperty().addListener((o, staro, novo) -> {
+            poljePretrage.getStyleClass().remove("fokus");
+            if (novo) {
+                poljePretrage.getStyleClass().add("fokus");
+            }
+        });
+
         Region razmak = new Region();
         HBox.setHgrow(razmak, Priority.ALWAYS);
-        HBox zaglavlje = new HBox(32, tekst, razmak, pretraga);
+        HBox zaglavlje = new HBox(32, tekst, razmak, poljePretrage);
         zaglavlje.setAlignment(Pos.BOTTOM_LEFT);
         zaglavlje.getStyleClass().add("sadrzaj-zaglavlje");
 
@@ -215,13 +231,24 @@ public class KvizRadioApp extends Application {
         return box;
     }
 
+    /**
+     * Lupa je crtez, a ne glif: znak za pretragu u sistemskim fontovima ume da
+     * bude sicusan ili da ga uopste nema.
+     */
+    private static Group lupa() {
+        Circle staklo = new Circle(5.5);
+        staklo.setFill(Color.TRANSPARENT);
+        staklo.setStroke(Color.web("#6A6E7D"));
+        staklo.setStrokeWidth(1.4);
+        Line drska = new Line(4, 4, 8.5, 8.5);
+        drska.setStroke(Color.web("#6A6E7D"));
+        drska.setStrokeWidth(1.4);
+        return new Group(staklo, drska);
+    }
+
     private Region dno() {
-        Label precice = new Label("Space play/stop   ·   F fade   ·   N sledeca   ·   strelice volume");
-        precice.getStyleClass().add("precice");
-        HBox red = new HBox(precice);
-        red.setAlignment(Pos.CENTER_RIGHT);
-        red.setPadding(new Insets(0, 34, 8, 0));
-        return new VBox(red, bar);
+        // precice su se preselile u podnozje levog menija
+        return bar;
     }
 
     /** Grupe iz konfiguracije, pa mreze bez reklama, pa omiljene. */

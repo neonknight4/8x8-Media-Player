@@ -35,7 +35,7 @@ import java.util.function.Consumer;
  */
 public final class Kartica extends StackPane {
 
-    private static final double PRECNIK = 62;
+    private static final double PRECNIK = 56;
 
     private final Stanica stanica;
     private final Label zvezda;
@@ -53,9 +53,9 @@ public final class Kartica extends StackPane {
         this.stanica = stanica;
         getStyleClass().add("kartica");
         // fiksna visina, inace red kartica sa dugackim imenom razvuce ceo red
-        setPrefSize(212, 190);
-        setMinSize(212, 190);
-        setMaxSize(212, 190);
+        setPrefSize(212, 182);
+        setMinSize(212, 182);
+        setMaxSize(212, 182);
 
         Label ime = new Label(stanica.ime());
         ime.getStyleClass().add("kartica-ime");
@@ -67,7 +67,7 @@ public final class Kartica extends StackPane {
         Label meta = new Label(meta(stanica));
         meta.getStyleClass().add("kartica-meta");
 
-        VBox sadrzaj = new VBox(12, logo(stanica), ime, meta);
+        VBox sadrzaj = new VBox(10, logo(stanica), ime, meta);
         sadrzaj.setAlignment(Pos.TOP_CENTER);
 
         zvezda = new Label("★");
@@ -154,15 +154,15 @@ public final class Kartica extends StackPane {
         if (!upaljeno) {
             return;
         }
-        DropShadow sjaj = new DropShadow(18, Color.web("#D4AF37", 0.10));
+        DropShadow sjaj = new DropShadow(18, Color.web("#E3B341", 0.10));
         setEffect(sjaj);
         pulsiranje = new Timeline(
                 new KeyFrame(Duration.ZERO,
                         new KeyValue(sjaj.radiusProperty(), 18),
-                        new KeyValue(sjaj.colorProperty(), Color.web("#D4AF37", 0.10))),
+                        new KeyValue(sjaj.colorProperty(), Color.web("#E3B341", 0.10))),
                 new KeyFrame(Duration.millis(1200),
                         new KeyValue(sjaj.radiusProperty(), 30),
-                        new KeyValue(sjaj.colorProperty(), Color.web("#D4AF37", 0.28))));
+                        new KeyValue(sjaj.colorProperty(), Color.web("#E3B341", 0.28))));
         pulsiranje.setAutoReverse(true);
         pulsiranje.setCycleCount(Animation.INDEFINITE);
         pulsiranje.play();
@@ -173,7 +173,7 @@ public final class Kartica extends StackPane {
         box.setAlignment(Pos.BOTTOM_LEFT);
         box.setPrefHeight(14);
         for (int i = 0; i < 3; i++) {
-            Rectangle r = new Rectangle(3, 14, Color.web("#D4AF37"));
+            Rectangle r = new Rectangle(3, 14, Color.web("#3FD6C1"));
             // skaliranje ide od dna (u dizajnu transform-origin: bottom), pa
             // ide preko Scale transformacije - setScaleY bi sirio na obe strane
             Scale skala = new Scale(1, 1, 1.5, 14);
@@ -192,8 +192,8 @@ public final class Kartica extends StackPane {
 
     private static StackPane logo(Stanica stanica) {
         Circle krug = new Circle(PRECNIK / 2);
-        krug.setFill(Color.web("#0E0E0E"));
-        krug.setStroke(Color.web("#D4AF37", 0.35));
+        krug.setFill(Color.web("#10131A"));
+        krug.setStroke(Color.web("#E3B341", 0.35));
 
         Label inicijali = new Label(Tekst.inicijali(stanica.ime()));
         inicijali.getStyleClass().add("inicijali");

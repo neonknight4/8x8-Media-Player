@@ -61,19 +61,19 @@ public final class FolderKartica extends StackPane {
     /** Kruzic sa nacrtanim folderom - isti okvir kao logo stanice. */
     private static StackPane ikonicaFoldera() {
         Circle krug = new Circle(31);
-        krug.setFill(Color.web("#0E0E0E"));
-        krug.setStroke(Color.web("#D4AF37", 0.35));
+        krug.setFill(Color.web("#10131A"));
+        krug.setStroke(Color.web("#E3B341", 0.35));
 
         Rectangle telo = new Rectangle(26, 19);
         telo.setFill(null);
-        telo.setStroke(Color.web("#D4AF37"));
+        telo.setStroke(Color.web("#E3B341"));
         telo.setStrokeWidth(1.5);
         telo.setArcWidth(4);
         telo.setArcHeight(4);
 
         Rectangle jezicak = new Rectangle(11, 5);
         jezicak.setFill(null);
-        jezicak.setStroke(Color.web("#D4AF37"));
+        jezicak.setStroke(Color.web("#E3B341"));
         jezicak.setStrokeWidth(1.5);
         jezicak.setTranslateX(-7.5);
         jezicak.setTranslateY(-12);
@@ -86,10 +86,10 @@ public final class FolderKartica extends StackPane {
 
     /** Zlatno dugme preko cele kartice; vidi se tek kad je mis nad karticom. */
     private static StackPane preklopSaPustanjem() {
-        Circle krug = new Circle(26, Color.web("#D4AF37"));
-        krug.setEffect(new javafx.scene.effect.DropShadow(22, Color.web("#D4AF37", 0.35)));
+        Circle krug = new Circle(26, Color.web("#E3B341"));
+        krug.setEffect(new javafx.scene.effect.DropShadow(22, Color.web("#E3B341", 0.35)));
         Polygon trougao = new Polygon(0, 0, 0, 20, 16, 10);
-        trougao.setFill(Color.web("#0A0A0A"));
+        trougao.setFill(Color.web("#0A0B10"));
         trougao.setTranslateX(3);
 
         StackPane preklop = new StackPane(new StackPane(krug, trougao));
@@ -104,13 +104,13 @@ public final class FolderKartica extends StackPane {
     public static StackPane dodavanje(Runnable naDodavanje) {
         Circle krug = new Circle(31);
         krug.setFill(null);
-        krug.setStroke(Color.web("#D4AF37", 0.55));
+        krug.setStroke(Color.web("#E3B341", 0.55));
         krug.getStrokeDashArray().addAll(4.0, 4.0);
         Label plus = new Label("+");
-        plus.setStyle("-fx-font-size: 28px; -fx-text-fill: #D4AF37;");
+        plus.setStyle("-fx-font-size: 28px; -fx-text-fill: #E3B341;");
 
         Label natpis = new Label("Dodaj folder");
-        natpis.setStyle("-fx-font-size: 14px; -fx-text-fill: #D4AF37;");
+        natpis.setStyle("-fx-font-size: 14px; -fx-text-fill: #E3B341;");
 
         VBox sadrzaj = new VBox(12, new StackPane(krug, plus), natpis);
         sadrzaj.setAlignment(Pos.CENTER);

@@ -1,57 +1,93 @@
 /* ===========================================================================
-   KvizRadio - crno + zlatna, po dizajnu "KvizRadio desktop player".
-   Zlato #D4AF37, hover #F0D060, tekst #F2EFE6, prigusen tekst #8A8578.
+   KvizRadio - tamna podloga sa hladnim tonom i zlatnim brendom.
+
+   Boje su imenovane na .root i odatle se citaju (JavaFX "looked-up colors"),
+   pa se ceo izgled menja na jednom mestu. Cetiri akcenta nose znacenje i ne
+   mesaju se:
+
+     zlatna  - brend i glavne radnje (play, omiljeno, aktivna sekcija)
+     tirkiz  - ide uzivo (PLAYING, ekvilajzer na kartici, tekuca numera)
+     plava   - u toku (povezivanje, bafer)
+     koral   - greska i fade, jedino sto prekida zvuk
+
+   Ista cetiri tona nosi i spektar u donjem baru (Spektar.BOJE), pa slika
+   deluje kao jedan sistem, a ne kao zbir ukrasa.
+
    JavaFX nema letter-spacing ni transition, pa su razmaci u tekstu (vidi
-   KvizRadioApp.razmaknuto) a animacije Timeline-ovi.
+   Tekst.razmaknuto) a animacije Timeline-ovi.
    =========================================================================== */
 
 .root {
-    -fx-base: #141414;
-    -fx-background: #0A0A0A;
-    -fx-control-inner-background: #131313;
-    -fx-accent: #D4AF37;
-    -fx-focus-color: #D4AF37;
-    -fx-faint-focus-color: #D4AF3722;
-    -fx-text-background-color: #F2EFE6;
+    /* podloge */
+    -c-dno: #0A0B10;
+    -c-dno-2: #12141C;
+    -c-panel: #08090D;
+    -c-povrsina: #16181F;
+    -c-povrsina-2: #1C1F29;
+    -c-polje: #13151C;
+
+    /* linije */
+    -c-ivica: #242833;
+    -c-ivica-tiha: #1A1D25;
+
+    /* tekst, od najjaceg ka najtisem */
+    -c-tekst: #ECEAE4;
+    -c-tekst-2: #9A9DAC;
+    -c-tekst-3: #6A6E7D;
+    -c-tekst-4: #474B58;
+
+    /* akcenti */
+    -c-zlatna: #E3B341;
+    -c-zlatna-jaka: #F7D477;
+    -c-tirkiz: #3FD6C1;
+    -c-plava: #4A8CFF;
+    -c-koral: #FF6B5A;
+
+    -fx-base: -c-povrsina;
+    -fx-background: -c-dno;
+    -fx-control-inner-background: -c-polje;
+    -fx-accent: -c-zlatna;
+    -fx-focus-color: -c-zlatna;
+    -fx-faint-focus-color: #E3B34122;
+    -fx-text-background-color: -c-tekst;
     -fx-font-family: "Outfit", "Segoe UI", "DejaVu Sans", sans-serif;
     -fx-font-size: 14px;
 }
 
+/* dijagonala od skoro crnog ka plavicastom - da povrsina ne bude mrtva */
 .pozadina {
-    -fx-background-color: linear-gradient(from 0% 0% to 55% 100%,
-        #0A0A0A 0%, #101010 45%, #141414 100%);
+    -fx-background-color: linear-gradient(from 0% 0% to 70% 100%,
+        #0A0B10 0%, #0F1118 48%, #151824 100%);
 }
 
 /* --- levi meni ---------------------------------------------------------- */
 .sidebar {
-    -fx-background-color: #070707;
-    -fx-border-color: transparent rgba(212,175,55,0.16) transparent transparent;
+    -fx-background-color: -c-panel;
+    -fx-border-color: transparent rgba(227,179,65,0.16) transparent transparent;
     -fx-border-width: 0 1 0 0;
 }
 
 .sidebar-zaglavlje {
     -fx-padding: 30 24 22 24;
-    -fx-border-color: transparent transparent rgba(212,175,55,0.14) transparent;
+    -fx-border-color: transparent transparent rgba(227,179,65,0.14) transparent;
     -fx-border-width: 0 0 1 0;
 }
 
 .logo {
     -fx-font-size: 19px;
     -fx-font-weight: bold;
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-zlatna;
 }
 
 .logo-potpis {
     -fx-font-size: 10px;
-    -fx-text-fill: #6E6A5E;
+    -fx-text-fill: -c-tekst-3;
 }
 
 .sidebar-podnozje {
-    -fx-padding: 16 24 20 24;
-    -fx-border-color: rgba(212,175,55,0.14) transparent transparent transparent;
+    -fx-padding: 12 20 14 24;
+    -fx-border-color: rgba(227,179,65,0.14) transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
-    -fx-font-size: 10px;
-    -fx-text-fill: #57544B;
 }
 
 .grupa {
@@ -61,86 +97,98 @@
 }
 
 .grupa:hover {
-    -fx-background-color: rgba(212,175,55,0.05);
+    -fx-background-color: rgba(227,179,65,0.05);
 }
 
 .grupa-naziv {
     -fx-font-size: 16px;
-    -fx-text-fill: #B9B4A6;
+    -fx-text-fill: -c-tekst-2;
 }
 
 .grupa-naziv.aktivna {
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-zlatna;
 }
 
 .grupa-broj {
     -fx-font-size: 11px;
-    -fx-text-fill: #4E4B44;
+    -fx-text-fill: -c-tekst-4;
 }
 
 .grupa-broj.aktivna {
-    -fx-text-fill: rgba(212,175,55,0.7);
+    -fx-text-fill: rgba(227,179,65,0.7);
 }
 
 /* zlatna crtica levo od aktivne grupe */
 .grupa-oznaka {
-    -fx-background-color: #D4AF37;
-    -fx-effect: dropshadow(gaussian, rgba(212,175,55,0.55), 12, 0.3, 0, 0);
+    -fx-background-color: -c-zlatna;
+    -fx-effect: dropshadow(gaussian, rgba(227,179,65,0.55), 12, 0.3, 0, 0);
 }
 
 .stavka {
     -fx-padding: 7 24 7 40;
     -fx-font-size: 13px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
     -fx-cursor: hand;
     -fx-background-color: transparent;
 }
 
 .stavka:hover {
-    -fx-text-fill: #F0D060;
+    -fx-text-fill: -c-zlatna-jaka;
 }
 
 .stavka.aktivna {
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-zlatna;
 }
 
 /* --- zaglavlje sadrzaja -------------------------------------------------- */
 .sadrzaj-zaglavlje {
     -fx-padding: 30 40 22 40;
-    -fx-border-color: transparent transparent rgba(212,175,55,0.12) transparent;
+    -fx-border-color: transparent transparent rgba(227,179,65,0.12) transparent;
     -fx-border-width: 0 0 1 0;
 }
 
 .mrvica {
     -fx-font-size: 10px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
 }
 
 .naslov {
     -fx-font-size: 34px;
-    -fx-text-fill: #F2EFE6;
+    -fx-text-fill: -c-tekst;
 }
 
 .podnaslov {
     -fx-font-size: 13px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
+}
+
+/* polje pretrage: okvir nosi izgled, samo polje je providno unutra */
+.pretraga-okvir {
+    -fx-background-color: -c-polje;
+    -fx-background-radius: 12;
+    -fx-border-color: -c-ivica;
+    -fx-border-radius: 12;
+    -fx-padding: 0 14 0 16;
+}
+
+.pretraga-okvir.fokus {
+    -fx-border-color: -c-zlatna;
+    -fx-effect: dropshadow(gaussian, rgba(227,179,65,0.18), 10, 0.3, 0, 0);
 }
 
 .pretraga {
-    -fx-background-color: #131313;
-    -fx-background-radius: 10;
-    -fx-border-color: #242424;
-    -fx-border-radius: 10;
-    -fx-text-fill: #F2EFE6;
-    -fx-prompt-text-fill: #6E6A5E;
-    -fx-highlight-fill: rgba(212,175,55,0.35);
-    -fx-padding: 12 14 12 14;
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -c-tekst;
+    -fx-prompt-text-fill: -c-tekst-3;
+    -fx-highlight-fill: rgba(227,179,65,0.35);
+    -fx-padding: 12 0 12 0;
     -fx-font-size: 14px;
 }
 
 .pretraga:focused {
-    -fx-border-color: #D4AF37;
-    -fx-effect: dropshadow(gaussian, rgba(212,175,55,0.16), 8, 0.4, 0, 0);
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
 }
 
 /* --- mreza kartica ------------------------------------------------------- */
@@ -155,159 +203,171 @@
 }
 
 .kartica {
-    -fx-background-color: #1A1A1A;
-    -fx-background-radius: 14;
-    -fx-border-color: #242424;
-    -fx-border-radius: 14;
-    -fx-padding: 22 18 18 18;
+    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #191C24 0%, #14161D 100%);
+    -fx-background-radius: 16;
+    -fx-border-color: -c-ivica;
+    -fx-border-radius: 16;
+    -fx-padding: 18 16 16 16;
     -fx-cursor: hand;
 }
 
 .kartica:hover {
-    -fx-background-color: #1E1E1C;
-    -fx-border-color: rgba(212,175,55,0.55);
+    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #1F232D 0%, #181B23 100%);
+    -fx-border-color: rgba(227,179,65,0.5);
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 18, 0.2, 0, 6);
 }
 
+/* stanica koja je izabrana: zlatni okvir i tanka zlatna podloga */
 .kartica.svira {
-    -fx-border-color: #D4AF37;
+    -fx-border-color: -c-zlatna;
+    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, rgba(227,179,65,0.10) 0%, #14161D 70%);
 }
 
 .kartica-dodavanje {
     -fx-background-color: transparent;
     -fx-background-radius: 14;
-    -fx-border-color: rgba(212,175,55,0.45);
+    -fx-border-color: rgba(227,179,65,0.45);
     -fx-border-radius: 14;
     -fx-border-style: segments(6, 6) line-cap round;
     -fx-cursor: hand;
 }
 
 .kartica-dodavanje:hover {
-    -fx-background-color: rgba(212,175,55,0.06);
-    -fx-border-color: #D4AF37;
+    -fx-background-color: rgba(227,179,65,0.06);
+    -fx-border-color: -c-zlatna;
 }
 
 .kartica-ime {
     -fx-font-size: 15px;
-    -fx-text-fill: #F2EFE6;
+    -fx-text-fill: -c-tekst;
 }
 
 .kartica-meta {
-    -fx-font-size: 11px;
-    -fx-text-fill: #8A8578;
+    -fx-font-size: 10px;
+    -fx-text-fill: -c-tekst-2;
+    -fx-background-color: rgba(255,255,255,0.04);
+    -fx-background-radius: 20;
+    -fx-border-color: -c-ivica;
+    -fx-border-radius: 20;
+    -fx-padding: 3 10 3 10;
 }
 
 .inicijali {
     -fx-font-size: 17px;
     -fx-font-weight: bold;
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-zlatna;
 }
 
 .zvezda {
     -fx-font-size: 15px;
-    -fx-text-fill: #3A3833;
+    -fx-text-fill: -c-tekst-4;
     -fx-cursor: hand;
     -fx-background-color: transparent;
     -fx-padding: 4;
 }
 
 .zvezda:hover {
-    -fx-text-fill: #F0D060;
+    -fx-text-fill: -c-zlatna-jaka;
 }
 
 .zvezda.omiljena {
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-zlatna;
 }
 
 .sakrij {
     -fx-font-size: 13px;
-    -fx-text-fill: #3A3833;
+    -fx-text-fill: -c-tekst-4;
     -fx-cursor: hand;
     -fx-background-color: transparent;
     -fx-padding: 4;
 }
 
 .sakrij:hover {
-    -fx-text-fill: #F0D060;
+    -fx-text-fill: -c-zlatna-jaka;
 }
 
 .prazno-znak {
     -fx-font-size: 58px;
-    -fx-text-fill: #D4AF37;
-    -fx-effect: dropshadow(gaussian, rgba(212,175,55,0.35), 34, 0.3, 0, 0);
+    -fx-text-fill: -c-zlatna;
+    -fx-effect: dropshadow(gaussian, rgba(227,179,65,0.35), 34, 0.3, 0, 0);
 }
 
 .prazno-naslov {
     -fx-font-size: 22px;
-    -fx-text-fill: #F2EFE6;
+    -fx-text-fill: -c-tekst;
 }
 
 .prazno-tekst {
     -fx-font-size: 13px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
 }
 
 /* --- donji bar ----------------------------------------------------------- */
 .player-bar {
-    -fx-background-color: #060606;
-    -fx-border-color: rgba(212,175,55,0.45) transparent transparent transparent;
+    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #0D0F16 0%, -c-panel 100%);
+    -fx-border-color: rgba(227,179,65,0.4) transparent transparent transparent;
     -fx-border-width: 1 0 0 0;
     -fx-padding: 0 32 0 32;
 }
 
 .sada-ime {
     -fx-font-size: 16px;
-    -fx-text-fill: #F2EFE6;
+    -fx-text-fill: -c-tekst;
 }
 
 .sada-ime.prazno {
-    -fx-text-fill: #57544B;
+    -fx-text-fill: -c-tekst-3;
 }
 
 .status {
     -fx-font-size: 10px;
     -fx-font-weight: bold;
-    -fx-text-fill: #57544B;
+    -fx-text-fill: -c-tekst-3;
 }
 
 .status.svira {
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-tirkiz;
 }
 
 .status.radi {
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-plava;
+}
+
+.status.greska {
+    -fx-text-fill: -c-koral;
 }
 
 .sada-meta {
     -fx-font-size: 10px;
-    -fx-text-fill: #57544B;
+    -fx-text-fill: -c-tekst-3;
 }
 
 .nota {
     -fx-font-size: 12px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
 }
 
 /* prepoznata pesma se razlikuje od one koju je javio strim */
 .nota.prepoznato {
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-zlatna;
 }
 
 .pesma-izvodjac {
     -fx-font-size: 12px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
 }
 
 .pesma-naslov {
     -fx-font-size: 12px;
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-zlatna;
 }
 
 .prepoznaj-dugme {
     -fx-font-size: 10px;
     -fx-font-weight: bold;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
     -fx-background-color: transparent;
-    -fx-border-color: #2E2C27;
+    -fx-border-color: -c-ivica;
     -fx-border-radius: 6;
     -fx-background-radius: 6;
     -fx-padding: 3 10 3 10;
@@ -315,29 +375,51 @@
 }
 
 .prepoznaj-dugme:hover {
-    -fx-border-color: #D4AF37;
-    -fx-text-fill: #D4AF37;
+    -fx-border-color: -c-zlatna;
+    -fx-text-fill: -c-zlatna;
 }
 
 .prepoznaj-dugme:disabled {
     -fx-opacity: 1.0;
-    -fx-text-fill: #57544B;
+    -fx-text-fill: -c-tekst-3;
     -fx-cursor: default;
 }
 
 .oznaka {
     -fx-font-size: 10px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
 }
 
 .jacina-broj {
     -fx-font-size: 12px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
 }
 
-.precice {
+/* podnozje levog menija: sat pa spisak precica */
+.precica-taster {
     -fx-font-size: 10px;
-    -fx-text-fill: #4E4B44;
+    -fx-font-weight: bold;
+    -fx-text-fill: -c-tekst-2;
+    -fx-background-color: rgba(255,255,255,0.05);
+    -fx-background-radius: 5;
+    -fx-border-color: -c-ivica;
+    -fx-border-radius: 5;
+    -fx-padding: 1 6 1 6;
+}
+
+.precica-opis {
+    -fx-font-size: 10px;
+    -fx-text-fill: -c-tekst-4;
+}
+
+.sat {
+    -fx-font-size: 16px;
+    -fx-text-fill: -c-tekst-2;
+}
+
+.pretraga-ikona {
+    -fx-font-size: 13px;
+    -fx-text-fill: -c-tekst-3;
 }
 
 /* veliko okruglo dugme za pustanje/zaustavljanje */
@@ -349,59 +431,59 @@
 
 .vreme {
     -fx-font-size: 11px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
 }
 
 .napredak-pozadina {
-    -fx-background-color: #232320;
+    -fx-background-color: -c-ivica;
     -fx-background-radius: 2;
 }
 
 .napredak-popunjeno {
-    -fx-background-color: #D4AF37;
+    -fx-background-color: linear-gradient(to right, -c-zlatna 0%, -c-tirkiz 100%);
     -fx-background-radius: 2;
 }
 
 /* spisak pesama u lokalnom folderu */
 .spisak-zaglavlje {
-    -fx-border-color: transparent transparent rgba(212,175,55,0.12) transparent;
+    -fx-border-color: transparent transparent rgba(227,179,65,0.12) transparent;
     -fx-border-width: 0 0 1 0;
 }
 
 .spisak-red {
     -fx-padding: 12 14 12 14;
-    -fx-border-color: transparent transparent #171717 transparent;
+    -fx-border-color: transparent transparent -c-ivica-tiha transparent;
     -fx-border-width: 0 0 1 0;
     -fx-cursor: hand;
 }
 
 .spisak-red:hover {
-    -fx-background-color: #191917;
+    -fx-background-color: -c-povrsina-2;
 }
 
 .spisak-broj {
     -fx-font-size: 13px;
-    -fx-text-fill: #57544B;
+    -fx-text-fill: -c-tekst-3;
 }
 
 .spisak-svira {
     -fx-font-size: 13px;
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-tirkiz;
 }
 
 .spisak-naslov {
     -fx-font-size: 15px;
-    -fx-text-fill: #F2EFE6;
+    -fx-text-fill: -c-tekst;
 }
 
 .spisak-naslov-svira {
     -fx-font-size: 15px;
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-tirkiz;
 }
 
 .spisak-izvodjac {
     -fx-font-size: 13px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
 }
 
 .pesme-lista {
@@ -411,23 +493,23 @@
 
 .pesme-lista .list-cell {
     -fx-background-color: transparent;
-    -fx-text-fill: #F2EFE6;
+    -fx-text-fill: -c-tekst;
     -fx-padding: 8 12 8 12;
     -fx-font-size: 14px;
     -fx-cursor: hand;
 }
 
 .pesme-lista .list-cell:hover {
-    -fx-background-color: rgba(212,175,55,0.08);
+    -fx-background-color: rgba(227,179,65,0.08);
 }
 
 .pesme-lista .list-cell:selected {
-    -fx-background-color: rgba(212,175,55,0.16);
-    -fx-text-fill: #D4AF37;
+    -fx-background-color: rgba(227,179,65,0.16);
+    -fx-text-fill: -c-zlatna;
 }
 
 .pesma-trajanje {
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
     -fx-font-size: 12px;
 }
 
@@ -441,8 +523,8 @@
     -fx-background-color: transparent;
     -fx-background-radius: 8;
     -fx-border-radius: 8;
-    -fx-border-color: #D4AF37;
-    -fx-text-fill: #D4AF37;
+    -fx-border-color: -c-zlatna;
+    -fx-text-fill: -c-zlatna;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
     -fx-padding: 13 22 13 22;
@@ -450,47 +532,51 @@
 }
 
 .fade-dugme:hover {
-    -fx-background-color: rgba(212,175,55,0.14);
+    -fx-background-color: rgba(255,107,90,0.14);
+    -fx-border-color: -c-koral;
+    -fx-text-fill: -c-koral;
 }
 
 .fade-dugme:disabled {
-    -fx-border-color: #2E2C27;
-    -fx-text-fill: #57544B;
+    -fx-border-color: -c-ivica;
+    -fx-text-fill: -c-tekst-3;
     -fx-opacity: 1.0;
     -fx-cursor: default;
 }
 
 .fade-dugme.u-toku {
-    -fx-background-color: rgba(212,175,55,0.18);
+    -fx-background-color: rgba(255,107,90,0.18);
+    -fx-border-color: -c-koral;
+    -fx-text-fill: -c-koral;
 }
 
 /* --- plejlista (red sviranja, desno) ------------------------------------- */
 .plejlista {
-    -fx-background-color: #070707;
-    -fx-border-color: transparent transparent transparent rgba(212,175,55,0.16);
+    -fx-background-color: -c-panel;
+    -fx-border-color: transparent transparent transparent rgba(227,179,65,0.16);
     -fx-border-width: 0 0 0 1;
 }
 
 .plejlista-zaglavlje {
     -fx-padding: 30 22 18 22;
-    -fx-border-color: transparent transparent rgba(212,175,55,0.14) transparent;
+    -fx-border-color: transparent transparent rgba(227,179,65,0.14) transparent;
     -fx-border-width: 0 0 1 0;
 }
 
 .plejlista-naslov {
     -fx-font-size: 12px;
     -fx-font-weight: bold;
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-zlatna;
 }
 
 .plejlista-izvor {
     -fx-font-size: 16px;
-    -fx-text-fill: #F2EFE6;
+    -fx-text-fill: -c-tekst;
 }
 
 .prepoznaj-dugme.ukljuceno {
-    -fx-border-color: #D4AF37;
-    -fx-text-fill: #D4AF37;
+    -fx-border-color: -c-zlatna;
+    -fx-text-fill: -c-zlatna;
 }
 
 .plejlista-red {
@@ -502,46 +588,46 @@
 }
 
 .plejlista-red:hover {
-    -fx-background-color: #141412;
+    -fx-background-color: -c-povrsina-2;
 }
 
 .plejlista-red.svira {
-    -fx-background-color: rgba(212,175,55,0.08);
-    -fx-border-color: #D4AF37;
+    -fx-background-color: rgba(63,214,193,0.07);
+    -fx-border-color: -c-tirkiz;
 }
 
 /* red iznad kog visi prevuceni - pokazuje gde ce pasti */
 .plejlista-red.cilj {
-    -fx-background-color: rgba(212,175,55,0.16);
+    -fx-background-color: rgba(227,179,65,0.16);
 }
 
 .plejlista-red-naslov {
     -fx-font-size: 14px;
-    -fx-text-fill: #F2EFE6;
+    -fx-text-fill: -c-tekst;
 }
 
 .plejlista-naslov-svira {
     -fx-font-size: 14px;
-    -fx-text-fill: #D4AF37;
+    -fx-text-fill: -c-tirkiz;
 }
 
 .plejlista-red-meta {
     -fx-font-size: 11px;
-    -fx-text-fill: #8A8578;
+    -fx-text-fill: -c-tekst-2;
 }
 
 /* --- slider jacine ------------------------------------------------------- */
 .slider .track {
-    -fx-background-color: #2A2A28;
+    -fx-background-color: -c-ivica;
     -fx-pref-height: 1px;
     -fx-background-radius: 0;
 }
 
 .slider .thumb {
-    -fx-background-color: #D4AF37;
+    -fx-background-color: -c-zlatna;
     -fx-pref-width: 11px;
     -fx-pref-height: 11px;
-    -fx-effect: dropshadow(gaussian, rgba(212,175,55,0.5), 10, 0.4, 0, 0);
+    -fx-effect: dropshadow(gaussian, rgba(227,179,65,0.5), 10, 0.4, 0, 0);
 }
 
 /* --- scrollbar ----------------------------------------------------------- */
@@ -550,12 +636,12 @@
 }
 
 .scroll-bar .thumb {
-    -fx-background-color: #2A2A28;
+    -fx-background-color: -c-ivica;
     -fx-background-radius: 4;
 }
 
 .scroll-bar .thumb:hover {
-    -fx-background-color: rgba(212,175,55,0.45);
+    -fx-background-color: rgba(227,179,65,0.45);
 }
 
 .scroll-bar .increment-button,
