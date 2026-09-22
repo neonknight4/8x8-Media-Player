@@ -252,12 +252,6 @@
     -fx-padding: 3 10 3 10;
 }
 
-.inicijali {
-    -fx-font-size: 17px;
-    -fx-font-weight: bold;
-    -fx-text-fill: -c-zlatna;
-}
-
 .zvezda {
     -fx-font-size: 15px;
     -fx-text-fill: -c-tekst-4;

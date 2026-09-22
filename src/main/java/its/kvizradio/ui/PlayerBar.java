@@ -44,8 +44,7 @@ import java.util.function.Supplier;
  */
 public final class PlayerBar extends StackPane {
 
-    private final Label inicijali = new Label("—");
-    private final Circle prsten = new Circle(23);
+    private final StackPane avatar = Logo.avatar(46);
     private final Label ime = new Label("Nijedna stanica");
     private final Label status = new Label();
     private final Label meta = new Label();
@@ -157,9 +156,7 @@ public final class PlayerBar extends StackPane {
         ime.setText(naslov);
         meta.setText(folder == null ? "" : Tekst.razmaknuto(folder.toUpperCase()));
         Sidebar.postaviKlasu(ime, "prazno", false);
-        inicijali.setText("\u266B");
-        inicijali.setStyle("-fx-text-fill: #E3B341; -fx-font-size: 15px;");
-        prsten.setStroke(Color.web("#E3B341", 0.45));
+        Logo.postavi(avatar, nota());
         pokazi(nota, !izvodjac.isBlank());
         pokazi(pesmaIzvodjac, !izvodjac.isBlank());
         pokazi(pesmaNaslov, false);
@@ -313,9 +310,7 @@ public final class PlayerBar extends StackPane {
         boolean ima = s != null;
         ime.setText(ima ? s.ime() : "Nijedna stanica");
         Sidebar.postaviKlasu(ime, "prazno", !ima);
-        inicijali.setText(ima ? Tekst.inicijali(s.ime()) : "—");
-        inicijali.setStyle(ima ? "-fx-text-fill: #E3B341;" : "-fx-text-fill: #474B58;");
-        prsten.setStroke(Color.web(ima ? "#E3B341" : "#242833", ima ? 0.45 : 1));
+        Logo.postavi(avatar, s);
         meta.setText(ima ? opis(s) : "");
     }
 
@@ -324,11 +319,14 @@ public final class PlayerBar extends StackPane {
         return s.bitrate() > 0 ? d + s.bitrate() + " kbps" : d + s.kodek();
     }
 
-    private HBox sada(Runnable naPrepoznavanje, Runnable naPonistavanje) {
-        prsten.setFill(Color.web("#0F1118"));
-        inicijali.setStyle("-fx-font-size: 13px; -fx-font-weight: bold;");
-        StackPane avatar = new StackPane(prsten, inicijali);
+    /** Znak za numeru sa diska, tamo gde stanica ima svoj logo. */
+    private static Label nota() {
+        Label n = new Label("\u266B");
+        n.setStyle("-fx-text-fill: #E3B341; -fx-font-size: 17px;");
+        return n;
+    }
 
+    private HBox sada(Runnable naPrepoznavanje, Runnable naPonistavanje) {
         ime.getStyleClass().add("sada-ime");
         ime.setMaxWidth(280);
         status.getStyleClass().add("status");

@@ -23,16 +23,4 @@ public final class Tekst {
         }
         return sb.toString();
     }
-
-    /** Prva slova prve dve reci, kao rezerva kad favicon ne stigne. */
-    public static String inicijali(String ime) {
-        String[] reci = ime.replaceAll("[^\\p{L}\\p{N} -]", "").trim().split("[\\s-]+");
-        StringBuilder sb = new StringBuilder();
-        for (String r : reci) {
-            if (!r.isBlank() && sb.length() < 2) {
-                sb.append(Character.toUpperCase(r.charAt(0)));
-            }
-        }
-        return sb.length() == 0 ? "?" : sb.toString();
-    }
 }

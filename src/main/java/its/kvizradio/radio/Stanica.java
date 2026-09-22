@@ -16,6 +16,7 @@ public record Stanica(
         String ime,
         String url,
         String favicon,
+        String sajt,
         String tagovi,
         String drzava,
         String kodek,
@@ -30,6 +31,7 @@ public record Stanica(
                 Json.tekst(m.get("name")).trim(),
                 url.isBlank() ? Json.tekst(m.get("url")) : url,
                 Json.tekst(m.get("favicon")),
+                Json.tekst(m.get("homepage")),
                 Json.tekst(m.get("tags")),
                 Json.tekst(m.get("countrycode")),
                 Json.tekst(m.get("codec")),
@@ -44,6 +46,7 @@ public record Stanica(
                 + ",\"name\":" + Json.navodnici(ime)
                 + ",\"url_resolved\":" + Json.navodnici(url)
                 + ",\"favicon\":" + Json.navodnici(favicon)
+                + ",\"homepage\":" + Json.navodnici(sajt)
                 + ",\"tags\":" + Json.navodnici(tagovi)
                 + ",\"countrycode\":" + Json.navodnici(drzava)
                 + ",\"codec\":" + Json.navodnici(kodek)

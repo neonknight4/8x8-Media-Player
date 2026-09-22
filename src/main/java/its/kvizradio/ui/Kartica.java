@@ -12,13 +12,10 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Label;
 import javafx.scene.control.Tooltip;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Scale;
 import javafx.util.Duration;
@@ -26,12 +23,11 @@ import javafx.util.Duration;
 import java.util.function.Consumer;
 
 /**
- * Kartica jedne stanice: logo (favicon, a dok ga nema inicijali), ime, bitrate,
- * zvezdica za omiljene. Klik bilo gde pusta stanicu.
+ * Kartica jedne stanice: logo, ime, bitrate, zvezdica za omiljene. Klik bilo
+ * gde pusta stanicu.
  *
- * Favicon se ucitava u pozadini ({@code backgroundLoading}) - lista ume da ima
- * cetrdeset stanica, a dosta favicona su mrtvi linkovi ili .ico koji JavaFX ne
- * cita. Zato inicijali stoje odmah, a slika se pojavi tek ako stigne ispravna.
+ * Logo skida i kesira {@link Logo}; dok ne stigne, i kad ga nema, stoje
+ * slusalice.
  */
 public final class Kartica extends StackPane {
 
@@ -67,8 +63,12 @@ public final class Kartica extends StackPane {
         Label meta = new Label(meta(stanica));
         meta.getStyleClass().add("kartica-meta");
 
-        VBox sadrzaj = new VBox(10, logo(stanica), ime, meta);
-        sadrzaj.setAlignment(Pos.TOP_CENTER);
+        StackPane avatar = Logo.avatar(PRECNIK);
+        Logo.postavi(avatar, stanica);
+        VBox sadrzaj = new VBox(10, avatar, ime, meta);
+        // po sredini, ne uz vrh: kartice sa imenom u jednom redu su inace
+        // stajale sa praznim dnom, a one sa dva reda su izgledale nabijeno
+        sadrzaj.setAlignment(Pos.CENTER);
 
         zvezda = new Label("★");
         zvezda.getStyleClass().add("zvezda");
@@ -188,36 +188,6 @@ public final class Kartica extends StackPane {
             box.getChildren().add(r);
         }
         return box;
-    }
-
-    private static StackPane logo(Stanica stanica) {
-        Circle krug = new Circle(PRECNIK / 2);
-        krug.setFill(Color.web("#10131A"));
-        krug.setStroke(Color.web("#E3B341", 0.35));
-
-        Label inicijali = new Label(Tekst.inicijali(stanica.ime()));
-        inicijali.getStyleClass().add("inicijali");
-
-        StackPane p = new StackPane(krug, inicijali);
-        p.setPrefSize(PRECNIK, PRECNIK);
-        p.setMinSize(PRECNIK, PRECNIK);
-        p.setMaxSize(PRECNIK, PRECNIK);
-
-        String favicon = stanica.favicon();
-        if (favicon != null && favicon.startsWith("http")) {
-            Image slika = new Image(favicon, PRECNIK, PRECNIK, true, true, true);
-            slika.progressProperty().addListener((o, staro, novo) -> {
-                if (novo.doubleValue() >= 1.0 && !slika.isError() && slika.getWidth() > 0) {
-                    ImageView pogled = new ImageView(slika);
-                    pogled.setFitWidth(PRECNIK - 4);
-                    pogled.setFitHeight(PRECNIK - 4);
-                    pogled.setPreserveRatio(true);
-                    pogled.setClip(new Circle((PRECNIK - 4) / 2, (PRECNIK - 4) / 2, (PRECNIK - 4) / 2));
-                    p.getChildren().set(1, pogled);
-                }
-            });
-        }
-        return p;
     }
 
     private static String meta(Stanica s) {
