@@ -41,9 +41,15 @@ public final class PrepoznajService {
     private final Consumer<String> log;
 
     public PrepoznajService(String python, Consumer<String> log) {
-        this.python = python == null || python.isBlank()
-                ? podrazumevaniPython() : python.trim();
         this.log = log == null ? s -> {} : log;
+        String podesen = python == null ? "" : python.trim();
+        // podesena putanja koja vise ne postoji (premesten venv) ne sme da
+        // zakuca prepoznavanje - trazi se dalje na dogovorenim mestima
+        if (!podesen.isBlank() && !Files.isRegularFile(Path.of(podesen))) {
+            this.log.accept("Prepoznavanje: nema " + podesen + ", trazim Python sam");
+            podesen = "";
+        }
+        this.python = podesen.isBlank() ? podrazumevaniPython() : podesen;
     }
 
     /**
