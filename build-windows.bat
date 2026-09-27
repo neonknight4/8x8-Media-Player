@@ -52,8 +52,10 @@ if not exist "%TOOLS_DIR%\vlc\vlc-cache-gen.exe" (
     REM zip nema plugins.dat, a bez njega libvlc pri svakom pokretanju ucitava
     REM svih ~360 plugina - generator ide i u instalaciju (vidi VlcKes)
     copy /Y "vlc-tmp\vlc-%VLC_VERSION%\vlc-cache-gen.exe" "%TOOLS_DIR%\vlc\" >nul || goto :error
-    "%TOOLS_DIR%\vlc\vlc-cache-gen.exe" "%TOOLS_DIR%\vlc\plugins" || goto :error
-    if not exist "%TOOLS_DIR%\vlc\plugins\plugins.dat" goto :error
+    REM putanja mora biti apsolutna (%%~f): relativnu libvlc na Windowsu trazi
+    REM u System32, ne ucita nijedan plugin i upise prazan kes
+    for %%P in ("%TOOLS_DIR%\vlc\plugins") do "%TOOLS_DIR%\vlc\vlc-cache-gen.exe" "%%~fP" || goto :error
+    for %%F in ("%TOOLS_DIR%\vlc\plugins\plugins.dat") do if %%~zF LSS 10240 goto :error
     rmdir /S /Q vlc-tmp
 )
 

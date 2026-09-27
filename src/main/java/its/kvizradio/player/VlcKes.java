@@ -28,6 +28,8 @@ import java.util.function.Consumer;
 public final class VlcKes {
 
     private static final String OZNAKA = "plugins.dat.verzija";
+    /** Prazan kes je samo zaglavlje (24 B); pravi je stotine KB. */
+    private static final long NAJMANJI_KES = 10 * 1024;
 
     private VlcKes() {
     }
@@ -47,7 +49,7 @@ public final class VlcKes {
         String verzija = Alati.verzija();
         Path kes = plugini.resolve("plugins.dat");
         Path oznaka = plugini.resolve(OZNAKA);
-        if (Files.isRegularFile(kes) && verzija.equals(procitaj(oznaka))) {
+        if (velicina(kes) >= NAJMANJI_KES && verzija.equals(procitaj(oznaka))) {
             return;
         }
 
@@ -62,7 +64,10 @@ public final class VlcKes {
 
         long pocetak = System.currentTimeMillis();
         try {
-            Process p = new ProcessBuilder(generator.toString(), plugini.toString())
+            // Apsolutna putanja: relativnu libvlc na Windowsu trazi u System32
+            // (LOAD_LIBRARY_SEARCH_SYSTEM32), ne ucita nijedan plugin i upise
+            // prazan kes preko dobrog.
+            Process p = new ProcessBuilder(generator.toString(), plugini.toAbsolutePath().toString())
                     .redirectErrorStream(true)
                     .redirectOutput(ProcessBuilder.Redirect.DISCARD)
                     .start();
@@ -71,9 +76,9 @@ public final class VlcKes {
                 log.accept("WARNING: vlc-cache-gen nije zavrsio za 3 min - kes plugina nije napravljen");
                 return;
             }
-            if (p.exitValue() != 0 || !Files.isRegularFile(kes)) {
-                log.accept("WARNING: vlc-cache-gen izasao sa " + p.exitValue()
-                        + " - kes plugina nije napravljen, pokretanje ostaje sporo");
+            if (p.exitValue() != 0 || velicina(kes) < NAJMANJI_KES) {
+                log.accept("WARNING: vlc-cache-gen izasao sa " + p.exitValue() + ", kes "
+                        + Math.max(velicina(kes), 0) + " B - kes plugina nije napravljen, pokretanje ostaje sporo");
                 return;
             }
             Files.writeString(oznaka, verzija, StandardCharsets.UTF_8);
@@ -83,6 +88,14 @@ public final class VlcKes {
             // Program Files nije upisiv (ako je instalacija izabrala taj folder):
             // radi se i bez kesa, samo sporije.
             log.accept("WARNING: kes VLC plugina nije napravljen (" + e.getMessage() + ")");
+        }
+    }
+
+    private static long velicina(Path fajl) {
+        try {
+            return Files.size(fajl);
+        } catch (Exception e) {
+            return -1;
         }
     }
 

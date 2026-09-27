@@ -106,9 +106,15 @@ jobs:
           # njega libvlc pri svakom pokretanju ucitava svih ~360 plugin DLL-ova.
           # Generator ide i u instalaciju: posle update-a vremena fajlova vise
           # nisu ona iz kesa, pa aplikacija kes pravi ponovo (VlcKes).
+          # Putanja MORA biti apsolutna: libvlc na Windowsu ucitava plugin sa
+          # LOAD_LIBRARY_SEARCH_SYSTEM32, pa se relativna trazi u System32 i ne
+          # ucita se nijedan - a taj prazan prolaz pregazi dobar kes (v1.3 je
+          # tako dobio plugins.dat od 24 bajta, samo zaglavlje).
           Copy-Item "$src\vlc-cache-gen.exe" tools\vlc\
-          & tools\vlc\vlc-cache-gen.exe tools\vlc\plugins
+          $plugini = (Resolve-Path tools\vlc\plugins).Path
+          & tools\vlc\vlc-cache-gen.exe $plugini
           if (-not (Test-Path tools\vlc\plugins\plugins.dat)) { throw "vlc-cache-gen nije napravio plugins.dat" }
+          if ((Get-Item tools\vlc\plugins\plugins.dat).Length -lt 10KB) { throw "plugins.dat je prazan - nijedan plugin nije upisan u kes" }
           "libvlc: $((Get-Item tools\vlc\libvlc.dll).Length) bajtova, plugina: $((Get-ChildItem tools\vlc\plugins -Recurse -File).Count), kes: $((Get-Item tools\vlc\plugins\plugins.dat).Length) bajtova"
 
       # Embeddable Python nema pip niti gleda site-packages dok se u ._pth fajlu
