@@ -1,6 +1,7 @@
 package its.kvizradio;
 
 import its.kvizradio.player.PlayerService;
+import its.kvizradio.player.VlcKes;
 import its.kvizradio.radio.BezReklama;
 import its.kvizradio.radio.FavoritesStore;
 import its.kvizradio.lokalno.Biblioteka;
@@ -110,8 +111,10 @@ public class KvizRadioApp extends Application {
         Properties konf = Podesavanja.konfiguracija();
         limit = Podesavanja.broj(konf, "limit", 40);
 
+        long vlcOd = System.currentTimeMillis();
         try {
             player = new PlayerService(st -> Platform.runLater(() -> osveziStanje(st)), this::zabelezi);
+            zabelezi("libvlc spreman za " + (System.currentTimeMillis() - vlcOd) + " ms");
         } catch (RuntimeException | UnsatisfiedLinkError e) {
             // bez libvlc-a nema sta da se pusti; bolje jasna poruka nego stack
             // trace u konzoli koju na kvizu niko ne gleda
@@ -170,6 +173,18 @@ public class KvizRadioApp extends Application {
         sidebar.broj("Omiljene", omiljene.sve().size());
         sidebar.broj("Sakrivene", sakrivene.sve().size());
         sidebar.izaberiPrvu();
+
+        zabelezi("KvizRadio " + Alati.verzija() + " - spreman" + trajanjePokretanja());
+        // posle prikaza prozora: kes plugina ubrzava tek SLEDECE pokretanje
+        VlcKes.osveziUPozadini(this::zabelezi);
+    }
+
+    /** Od pokretanja procesa do prikazanog prozora, za log (" za 1.8 s"). */
+    private static String trajanjePokretanja() {
+        return ProcessHandle.current().info().startInstant()
+                .map(t -> String.format(" za %.1f s",
+                        java.time.Duration.between(t, java.time.Instant.now()).toMillis() / 1000.0))
+                .orElse("");
     }
 
     // ----------------------------------------------------------- raspored

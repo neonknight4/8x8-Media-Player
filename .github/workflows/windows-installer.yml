@@ -102,7 +102,14 @@ jobs:
           Copy-Item "$src\libvlc.dll" tools\vlc\
           Copy-Item "$src\libvlccore.dll" tools\vlc\
           Copy-Item "$src\plugins" tools\vlc\ -Recurse
-          "libvlc: $((Get-Item tools\vlc\libvlc.dll).Length) bajtova, plugina: $((Get-ChildItem tools\vlc\plugins -Recurse -File).Count)"
+          # Zip nema plugins\plugins.dat (pravi ga tek VLC-ov instaler), a bez
+          # njega libvlc pri svakom pokretanju ucitava svih ~360 plugin DLL-ova.
+          # Generator ide i u instalaciju: posle update-a vremena fajlova vise
+          # nisu ona iz kesa, pa aplikacija kes pravi ponovo (VlcKes).
+          Copy-Item "$src\vlc-cache-gen.exe" tools\vlc\
+          & tools\vlc\vlc-cache-gen.exe tools\vlc\plugins
+          if (-not (Test-Path tools\vlc\plugins\plugins.dat)) { throw "vlc-cache-gen nije napravio plugins.dat" }
+          "libvlc: $((Get-Item tools\vlc\libvlc.dll).Length) bajtova, plugina: $((Get-ChildItem tools\vlc\plugins -Recurse -File).Count), kes: $((Get-Item tools\vlc\plugins\plugins.dat).Length) bajtova"
 
       # Embeddable Python nema pip niti gleda site-packages dok se u ._pth fajlu
       # ne odkomentarise "import site" - bez toga "import shazamio" puca iako je

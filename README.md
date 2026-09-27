@@ -201,6 +201,7 @@ prvom pokretanju, u `tools\` (gitignore-ovan):
 | sta | gde zavrsi | zasto |
 |---|---|---|
 | **VLC** `libvlc.dll`, `libvlccore.dll`, `plugins\` | `app\vlc\` | sviranje; kao sto HUB nosi yt-dlp |
+| **vlc-cache-gen.exe** + `plugins\plugins.dat` | `app\vlc\` | kes plugina - bez njega je start spor (vidi nize) |
 | **Python 3.12 embeddable** + `shazamio` | `app\python\` | prepoznavanje pesme bez instaliranog Pythona |
 | **ffmpeg.exe** | `app\` | skripta njime snima isecak strima |
 
@@ -216,6 +217,26 @@ VLC. `prepoznavanje.python` u konfiguraciji i dalje pretegne, ako hoces svoj.
 Cena je velicina: instaler poraste sa ~100 MB na ~320 MB.
 
 VLC je pinovan na **3.0.x**: vlcj 4 radi sa libvlc 3, sa libvlc 4 ne.
+
+### Kes VLC plugina (brzina pokretanja)
+
+VLC-ov win64 zip **nema** `plugins\plugins.dat` - pravi ga tek VLC-ov instaler.
+Bez njega libvlc pri svakom pokretanju ucita svih ~360 plugin DLL-ova da sazna
+sta koji ume (a Defender skenira svaki), pa je KvizRadio na Windowsu dugo
+stajao pre nego sto se prozor pojavi. Sam libvlc kes ne upisuje; to radi samo
+`vlc-cache-gen.exe`, koji je u istom zip-u.
+
+- build ga pokrene nad `tools\vlc\plugins` i pukne ako `plugins.dat` ne nastane;
+- generator ide i u instalaciju, a `VlcKes` posle prikaza prozora napravi kes
+  ponovo kad ga nema ili je od druge verzije (`plugins.dat.verzija`). Kes pamti
+  vreme izmene svakog plugina, a to posle instalacije/update-a ne mora da bude
+  ono iz build-a - tada bi libvlc tiho ucitavao sve kao bez kesa.
+
+U logu stoji `libvlc spreman za N ms` i `KvizRadio ... - spreman za X s`.
+
+**Za testirati (27.9.2026):** na Windowsu uporediti vreme pokretanja pre i posle
+ove izmene - prvo pokretanje posle instalacije, pa drugo (tek tada je kes
+sigurno vazeci).
 
 `--add-modules jdk.unsupported` mora, isto kao kod `.deb`-a: JavaFX-ov Marlin
 rasterizer trazi `sun.misc.Unsafe`, pa se bez tog modula aplikacija digne i

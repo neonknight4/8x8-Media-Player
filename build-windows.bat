@@ -36,7 +36,9 @@ call mvn clean package || goto :error
 echo [2/4] Checking bundled VLC...
 REM Instalacija nosi svoj libvlc, kao sto HUB nosi yt-dlp i ffmpeg - inace
 REM sviranje zavisi od toga da li je na tudjem laptopu instaliran VLC i koji.
-if not exist "%TOOLS_DIR%\vlc\libvlc.dll" (
+REM Uslov je vlc-cache-gen.exe, ne libvlc.dll: stari tools\vlc ga nema, pa se
+REM tako i on osvezi.
+if not exist "%TOOLS_DIR%\vlc\vlc-cache-gen.exe" (
     echo   Downloading %VLC_ZIP% ...
     if not exist "%VLC_ZIP%" curl -L -o "%VLC_ZIP%" %VLC_URL% || goto :error
     if exist vlc-tmp rmdir /S /Q vlc-tmp
@@ -47,6 +49,11 @@ if not exist "%TOOLS_DIR%\vlc\libvlc.dll" (
     REM plugins moraju da stoje pored dll-a: libvlc ih trazi relativno u odnosu
     REM na sebe, pa se bez tog foldera ne ucitava nijedan dekoder
     xcopy /E /I /Y /Q "vlc-tmp\vlc-%VLC_VERSION%\plugins" "%TOOLS_DIR%\vlc\plugins" >nul || goto :error
+    REM zip nema plugins.dat, a bez njega libvlc pri svakom pokretanju ucitava
+    REM svih ~360 plugina - generator ide i u instalaciju (vidi VlcKes)
+    copy /Y "vlc-tmp\vlc-%VLC_VERSION%\vlc-cache-gen.exe" "%TOOLS_DIR%\vlc\" >nul || goto :error
+    "%TOOLS_DIR%\vlc\vlc-cache-gen.exe" "%TOOLS_DIR%\vlc\plugins" || goto :error
+    if not exist "%TOOLS_DIR%\vlc\plugins\plugins.dat" goto :error
     rmdir /S /Q vlc-tmp
 )
 
