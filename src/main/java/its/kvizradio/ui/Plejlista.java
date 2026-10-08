@@ -39,7 +39,7 @@ public final class Plejlista extends VBox {
     private final Label izvor = new Label();
     private final Label broj = new Label();
     private final Label nasumicno = new Label();
-    private final Label ocisti = new Label(Tekst.razmaknuto("OCISTI"));
+    private final Label ocisti = new Label(Tekst.razmaknuto("OČISTI"));
     private final VBox redovi = new VBox();
 
     public Plejlista(IntConsumer naIzbor, BiConsumer<Integer, Integer> naPomeranje,
@@ -61,7 +61,7 @@ public final class Plejlista extends VBox {
         broj.getStyleClass().add("mrvica");
 
         nasumicno.getStyleClass().add("prepoznaj-dugme");
-        nasumicno.setTooltip(new Tooltip("Nasumicno ili redom"));
+        nasumicno.setTooltip(new Tooltip("Nasumično ili redom"));
         ocisti.getStyleClass().add("prepoznaj-dugme");
         ocisti.setTooltip(new Tooltip("Isprazni red i zaustavi"));
         ocisti.setOnMouseClicked(e -> naPraznjenje.run());
@@ -93,7 +93,7 @@ public final class Plejlista extends VBox {
         prikazi(true);
         izvor.setText(folder == null ? "" : folder);
         broj.setText(Tekst.razmaknuto((red.velicina() + " PESAMA")));
-        nasumicno.setText(Tekst.razmaknuto(red.nasumicno() ? "NASUMICNO" : "REDOM"));
+        nasumicno.setText(Tekst.razmaknuto(red.nasumicno() ? "NASUMIČNO" : "REDOM"));
         Sidebar.postaviKlasu(nasumicno, "ukljuceno", red.nasumicno());
         boolean sada = red.nasumicno();
         nasumicno.setOnMouseClicked(e -> naNasumicno.accept(!sada));

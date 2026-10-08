@@ -595,7 +595,7 @@ public final class PlayerService {
             javi(Stanje.GRESKA, "fajlovi ne mogu da se puste");
             return;
         }
-        javi(Stanje.GRESKA, "fajl ne moze da se pusti");
+        javi(Stanje.GRESKA, "fajl ne može da se pusti");
         naKrajNumere.run();
     }
 

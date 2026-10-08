@@ -267,7 +267,7 @@ public final class PlayerBar extends StackPane {
 
     /** Dok prepoznavanje traje - servisu treba dvadesetak sekundi. */
     public void prepoznavanjeUToku(boolean traje) {
-        prepoznaj.setText(Tekst.razmaknuto(traje ? "SLUSAM..." : "PREPOZNAJ"));
+        prepoznaj.setText(Tekst.razmaknuto(traje ? "SLUŠAM..." : "PREPOZNAJ"));
         prepoznaj.setDisable(traje);
     }
 
@@ -340,7 +340,7 @@ public final class PlayerBar extends StackPane {
         pesmaIzvodjac.getStyleClass().add("pesma-izvodjac");
         pesmaNaslov.getStyleClass().add("pesma-naslov");
         pesmaNaslov.setMaxWidth(270);
-        Tooltip vrati = new Tooltip("Klikni da ponovo prepoznas pesmu");
+        Tooltip vrati = new Tooltip("Klikni da ponovo prepoznaš pesmu");
         for (Label l : new Label[] {nota, pesmaIzvodjac, pesmaNaslov}) {
             l.setTooltip(vrati);
             l.setOnMouseClicked(e -> {
@@ -498,7 +498,7 @@ public final class PlayerBar extends StackPane {
         dugme.setPrefSize(26, 22);
         dugme.setMinSize(26, 22);
         dugme.getStyleClass().add("mute-dugme");
-        Tooltip.install(dugme, new Tooltip("Prigusi zvuk"));
+        Tooltip.install(dugme, new Tooltip("Priguši zvuk"));
         dugme.setOnMouseClicked(e -> naMute.run());
         return dugme;
     }

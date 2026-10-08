@@ -126,7 +126,7 @@ public class KvizRadioApp extends Application {
             // trace u konzoli koju na kvizu niko ne gleda
             zabelezi("ERROR: libvlc nije nadjen (" + e.getMessage() + ")");
             new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR,
-                    "VLC (libvlc) nije nadjen.\n\nKvizRadio svira preko VLC-a. Instaliraj VLC "
+                    "VLC (libvlc) nije nađen.\n\nKvizRadio svira preko VLC-a. Instaliraj VLC "
                     + "za Windows, ili koristi instaler koji ga nosi sa sobom.").showAndWait();
             Platform.exit();
             return;
@@ -210,7 +210,7 @@ public class KvizRadioApp extends Application {
         tekst.setAlignment(Pos.BOTTOM_LEFT);
 
         pretraga.getStyleClass().add("pretraga");
-        pretraga.setPromptText("Trazi stanicu...");
+        pretraga.setPromptText("Traži stanicu...");
         // tekst se menja po sekciji - u muzici se ne traze stanice
         pretraga.setPrefWidth(320);
         pretraga.setMinWidth(320);
@@ -284,7 +284,7 @@ public class KvizRadioApp extends Application {
 
         if (!bezReklama.prazna()) {
             List<Sekcija> stavke = new ArrayList<>();
-            stavke.add(Sekcija.bezReklama("Sve mreze", null));
+            stavke.add(Sekcija.bezReklama("Sve mreže", null));
             for (BezReklama.Mreza m : bezReklama.mreze()) {
                 stavke.add(Sekcija.bezReklama(m.naziv(), m.naziv()));
             }
@@ -304,7 +304,7 @@ public class KvizRadioApp extends Application {
     /** Klik u levom meniju: naslovi se postave odmah, stanice stizu iz pozadine. */
     private void otvori(String grupa, Sekcija sekcija) {
         pretraga.clear();
-        pretraga.setPromptText("Trazi stanicu...");
+        pretraga.setPromptText("Traži stanicu...");
         // Space i strelice rade samo kad fokus nije u polju za pretragu, a
         // posle kucanja tamo i ostane - pa se vraca cim se krene dalje.
         skrol.requestFocus();
@@ -342,12 +342,12 @@ public class KvizRadioApp extends Application {
     }
 
     /**
-     * Mreza ide van JavaFX niti; dok traje, stoji "Ucitavam...". Rezultat se
+     * Mreza ide van JavaFX niti; dok traje, stoji "Učitavam...". Rezultat se
      * vraca na FX nit, jer se tek tada prave kartice.
      */
     private void ucitaj(Supplier<List<Odeljak>> izvor) {
         izvorPrikaza = izvor;
-        podnaslov.setText("Ucitavam...");
+        podnaslov.setText("Učitavam...");
         sadrzaj.getChildren().clear();
         kartice.clear();
 
@@ -369,7 +369,7 @@ public class KvizRadioApp extends Application {
         // sakrivene se ne prikazuju nigde osim u svojoj sekciji
         List<Odeljak> odeljci = vrstaPrikaza == Sekcija.Vrsta.SAKRIVENE ? ulaz : bezSakrivenih(ulaz);
         int ukupno = odeljci.stream().mapToInt(o -> o.stanice().size()).sum();
-        podnaslov.setText(ukupno + " stanica · klik pusta uzivo"
+        podnaslov.setText(ukupno + " stanica · klik pušta uživo"
                 + (vrstaPrikaza == Sekcija.Vrsta.OMILJENE ? " · desni klik na karticu za grupu" : ""));
 
         if (ukupno == 0) {
@@ -404,12 +404,12 @@ public class KvizRadioApp extends Application {
         Label znak = new Label(uOmiljenima ? "★" : "∅");
         znak.getStyleClass().add("prazno-znak");
         Label naslovPraznog = new Label(uOmiljenima
-                ? "Jos nema omiljenih stanica"
+                ? "Još nema omiljenih stanica"
                 : "Nema stanice za taj pojam.");
         naslovPraznog.getStyleClass().add("prazno-naslov");
         Label opis = new Label(uOmiljenima
-                ? "Klikni zvezdicu na kartici stanice i naci ces je ovde - spremna za sledeci kviz."
-                : "Probaj drugu rec ili drugu sekciju u levom meniju.");
+                ? "Klikni zvezdicu na kartici stanice i naći ćeš je ovde - spremna za sledeći kviz."
+                : "Probaj drugu reč ili drugu sekciju u levom meniju.");
         opis.getStyleClass().add("prazno-tekst");
         opis.setWrapText(true);
         opis.setMaxWidth(320);
@@ -495,7 +495,7 @@ public class KvizRadioApp extends Application {
     /** Kartice foldera; skeniranje ide van FX niti jer prvi put traje. */
     private void otvoriLokalno() {
         vrstaPrikaza = Sekcija.Vrsta.LOKALNO;
-        pretraga.setPromptText("Trazi folder...");
+        pretraga.setPromptText("Traži folder...");
         mrvica.setText(Tekst.razmaknuto("MOJA MUZIKA"));
         naslov.setText("Folderi");
         podnaslov.setText("Skeniram...");
@@ -515,7 +515,7 @@ public class KvizRadioApp extends Application {
     private void nacrtajFoldere(List<Folder> folderi) {
         sadrzaj.getChildren().clear();
         kartice.clear();
-        podnaslov.setText(folderi.size() + " foldera · klik otvara spisak, dugme na kartici pusta nasumicno");
+        podnaslov.setText(folderi.size() + " foldera · klik otvara spisak, dugme na kartici pušta nasumično");
         FlowPane mreza = new FlowPane(18, 18);
         for (Folder f : folderi) {
             mreza.getChildren().add(new FolderKartica(f, this::pustiFolder, this::otvoriFolder));
@@ -530,7 +530,7 @@ public class KvizRadioApp extends Application {
         vrstaPrikaza = Sekcija.Vrsta.LOKALNE_PESME;
         lokalniFilter = true;
         pretraga.clear();
-        pretraga.setPromptText("Trazi pesmu...");
+        pretraga.setPromptText("Traži pesmu...");
         mrvica.setText(Tekst.razmaknuto(("MOJA MUZIKA / " + folder.naziv()).toUpperCase()));
         naslov.setText(folder.naziv());
         nacrtajPesme(folder, "");
@@ -547,7 +547,7 @@ public class KvizRadioApp extends Application {
 
         sadrzaj.getChildren().clear();
         kartice.clear();
-        podnaslov.setText(pogodjene.size() + " pesama · klik pusta odabranu");
+        podnaslov.setText(pogodjene.size() + " pesama · klik pušta odabranu");
         if (pogodjene.isEmpty()) {
             sadrzaj.getChildren().add(prazno());
             return;
@@ -565,8 +565,8 @@ public class KvizRadioApp extends Application {
         HBox red = new HBox(14,
                 kolona("#", 44, Pos.CENTER_LEFT),
                 kolona("NASLOV", -1, Pos.CENTER_LEFT),
-                kolona("IZVODJAC", 280, Pos.CENTER_LEFT),
-                kolona("DUZINA", 70, Pos.CENTER_RIGHT));
+                kolona("IZVOĐAČ", 280, Pos.CENTER_LEFT),
+                kolona("DUŽINA", 70, Pos.CENTER_RIGHT));
         red.getStyleClass().add("spisak-zaglavlje");
         red.setPadding(new Insets(0, 14, 10, 14));
         return red;
@@ -640,7 +640,7 @@ public class KvizRadioApp extends Application {
             tekuciFolder = folder.naziv();
             osveziPlejlistu();
         });
-        javafx.scene.control.MenuItem sledeca = new javafx.scene.control.MenuItem("Pusti sledecu");
+        javafx.scene.control.MenuItem sledeca = new javafx.scene.control.MenuItem("Pusti sledeću");
         sledeca.setOnAction(e -> {
             red(folder).ubaciSledecu(n);
             tekuciRed = red(folder);

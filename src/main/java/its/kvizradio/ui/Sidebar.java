@@ -71,8 +71,8 @@ public final class Sidebar extends VBox {
         String[][] spisak = {
             {"Space", "pusti"},
             {"F", "fade"},
-            {"N", "sledeca"},
-            {"\u2191\u2193", "jacina"},
+            {"N", "sledeća"},
+            {"\u2191\u2193", "jačina"},
         };
         VBox leva = new VBox(5);
         VBox desna = new VBox(5);
