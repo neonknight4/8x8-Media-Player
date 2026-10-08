@@ -111,7 +111,7 @@
 
 .grupa-broj {
     -fx-font-size: 11px;
-    -fx-text-fill: -c-tekst-4;
+    -fx-text-fill: -c-tekst-3;
 }
 
 .grupa-broj.aktivna {
@@ -305,7 +305,7 @@
 }
 
 .sada-ime {
-    -fx-font-size: 16px;
+    -fx-font-size: 19px;
     -fx-text-fill: -c-tekst;
 }
 
@@ -314,9 +314,9 @@
 }
 
 .status {
-    -fx-font-size: 10px;
+    -fx-font-size: 12px;
     -fx-font-weight: bold;
-    -fx-text-fill: -c-tekst-3;
+    -fx-text-fill: -c-tekst-2;
 }
 
 .status.svira {
@@ -337,7 +337,7 @@
 }
 
 .nota {
-    -fx-font-size: 12px;
+    -fx-font-size: 15px;
     -fx-text-fill: -c-tekst-2;
 }
 
@@ -347,12 +347,12 @@
 }
 
 .pesma-izvodjac {
-    -fx-font-size: 12px;
+    -fx-font-size: 15px;
     -fx-text-fill: -c-tekst-2;
 }
 
 .pesma-naslov {
-    -fx-font-size: 12px;
+    -fx-font-size: 15px;
     -fx-text-fill: -c-zlatna;
 }
 
@@ -385,7 +385,7 @@
 }
 
 .jacina-broj {
-    -fx-font-size: 12px;
+    -fx-font-size: 14px;
     -fx-text-fill: -c-tekst-2;
 }
 
@@ -403,7 +403,7 @@
 
 .precica-opis {
     -fx-font-size: 10px;
-    -fx-text-fill: -c-tekst-4;
+    -fx-text-fill: -c-tekst-3;
 }
 
 .sat {
