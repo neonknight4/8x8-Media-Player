@@ -955,6 +955,10 @@ public class KvizRadioApp extends Application {
             otkaziPrepoznavanje();
         }
         bar.prikazi(st);
+        if (st.stanje() == PlayerService.Stanje.STOP) {
+            // umesto "Nijedna stanica" - ono sto ce Space pustiti
+            bar.pripremi(izabrana);
+        }
         osveziAktivnuKarticu();
     }
 

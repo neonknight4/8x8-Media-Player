@@ -225,7 +225,8 @@ public final class PlayerBar extends StackPane {
                 pulsira = true;
             }
             case GRESKA -> {
-                tekst = "PONOVO SE POVEZUJEM";
+                // servis kaze za koliko je sledeci pokusaj, ili da fajl ne ide
+                tekst = st.poruka().isBlank() ? "PONOVO SE POVEZUJEM" : st.poruka().toUpperCase();
                 klasa = "greska";
                 pulsira = true;
             }
