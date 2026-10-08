@@ -17,6 +17,8 @@ import sys
 import tempfile
 
 SEKUNDI = 12
+# Shazamu se ne zna rok: kad zastane, dugme PREPOZNAJ ostaje zauzeto
+SHAZAM_ROK = 30
 
 
 def isecak(izvor: str) -> str:
@@ -38,7 +40,10 @@ def isecak(izvor: str) -> str:
 
 async def prepoznaj(putanja: str) -> dict:
     from shazamio import Shazam
-    odgovor = await Shazam().recognize(putanja)
+    try:
+        odgovor = await asyncio.wait_for(Shazam().recognize(putanja), SHAZAM_ROK)
+    except asyncio.TimeoutError:
+        return {"greska": f"Shazam nije odgovorio za {SHAZAM_ROK}s."}
     trag = odgovor.get("track")
     if not trag:
         return {"greska": "Pesma nije prepoznata."}
