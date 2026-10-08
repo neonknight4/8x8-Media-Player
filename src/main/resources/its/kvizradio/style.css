@@ -356,6 +356,17 @@
     -fx-text-fill: -c-zlatna;
 }
 
+/* ceo naziv pesme kad se kursor zadrzi nad njim */
+.pun-naziv {
+    -fx-font-size: 16px;
+    -fx-text-fill: -c-tekst;
+    -fx-background-color: -c-povrsina-2;
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(227,179,65,0.5);
+    -fx-border-radius: 8;
+    -fx-padding: 10 14 10 14;
+}
+
 .prepoznaj-dugme {
     -fx-font-size: 10px;
     -fx-font-weight: bold;

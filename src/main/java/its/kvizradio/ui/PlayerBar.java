@@ -53,6 +53,12 @@ public final class PlayerBar extends StackPane {
     private final Label pesmaIzvodjac = new Label();
     private final Label pesmaNaslov = new Label();
     private final Label prepoznaj = new Label(Tekst.razmaknuto("PREPOZNAJ"));
+    /** Ceo naziv pesme, uvek u punoj sirini - okvir oko njega ga sece i pomera. */
+    private final HBox pesmaTekst = new HBox(6, nota, pesmaIzvodjac, pesmaNaslov);
+    private final javafx.scene.layout.Pane pesmaOkvir = new javafx.scene.layout.Pane(pesmaTekst);
+    private javafx.animation.SequentialTransition klizanje;
+    /** Isti tekst kao u redu, kad se kursor zadrzi - ceo, bez cekanja na klizanje. */
+    private final Tooltip punNaziv = new Tooltip();
 
     private final Slider jacina = new Slider(0, 100, 70);
     private final Label jacinaBroj = new Label("70");
@@ -106,8 +112,13 @@ public final class PlayerBar extends StackPane {
         HBox.setHgrow(razmak, Priority.ALWAYS);
         // spektar stoji uz podatke o stanici, a ne uz jacinu: desno bi ovoliki
         // naleteo na veliko dugme, a ovde je prostor ionako prazan
-        HBox strane = new HBox(sada(naPrepoznavanje, naPonistavanje), spektar, razmak,
-                desno(naFade, naMute));
+        HBox levo = sada(naPrepoznavanje, naPonistavanje);
+        // tekst o stanici se siri samo dok spektar desno od njega ne stigne do
+        // velikog dugmeta - na 1366px se ranije podvlacio pod dugme. Siri
+        // prozor daje vise mesta za naziv pesme.
+        levo.maxWidthProperty().bind(javafx.beans.binding.Bindings.max(220,
+                widthProperty().divide(2).subtract(31 + 16 + 32 + 34 + spektar.getWidth())));
+        HBox strane = new HBox(levo, spektar, razmak, desno(naFade, naMute));
         strane.setAlignment(Pos.CENTER);
         HBox.setMargin(spektar, new Insets(0, 0, 0, 34));
 
@@ -161,6 +172,7 @@ public final class PlayerBar extends StackPane {
         pokazi(pesmaIzvodjac, !izvodjac.isBlank());
         pokazi(pesmaNaslov, false);
         pesmaIzvodjac.setText(izvodjac);
+        punNaziv.setText(izvodjac);
         // sa diska se ne prepoznaje - naslov je vec u tagu ili u imenu fajla
         pokazi(prepoznaj, false);
         prepoznato = false;
@@ -294,8 +306,37 @@ public final class PlayerBar extends StackPane {
         if (znamo) {
             pesmaIzvodjac.setText(p.izvodjac() + "  —");
             pesmaNaslov.setText(p.naslov());
+            String ceo = p.izvodjac().isBlank() ? p.naslov() : p.izvodjac() + "\n" + p.naslov();
+            punNaziv.setText(prepoznato ? ceo + "\n\nKlikni da ponovo prepoznaš pesmu" : ceo);
             Sidebar.postaviKlasu(nota, "prepoznato", prepoznato);
         }
+    }
+
+    /**
+     * Naziv koji ne staje klizi: dve sekunde stoji, pa ide do kraja brzinom
+     * koja se cita, stoji, i vraca se - kao radio u kolima. Kratak stoji
+     * mirno. Poziva se kad god se promeni tekst ili sirina okvira.
+     */
+    private void osveziKlizanje() {
+        if (klizanje != null) {
+            klizanje.stop();
+            klizanje = null;
+        }
+        pesmaTekst.setTranslateX(0);
+        double visak = pesmaTekst.getWidth() - pesmaOkvir.getWidth();
+        if (visak < 1 || pesmaOkvir.getWidth() <= 0) {
+            return;
+        }
+        Duration put = Duration.seconds(visak / 35);
+        javafx.animation.TranslateTransition napred = new javafx.animation.TranslateTransition(put, pesmaTekst);
+        napred.setToX(-visak);
+        javafx.animation.TranslateTransition nazad = new javafx.animation.TranslateTransition(put, pesmaTekst);
+        nazad.setToX(0);
+        klizanje = new javafx.animation.SequentialTransition(
+                new javafx.animation.PauseTransition(Duration.seconds(2)), napred,
+                new javafx.animation.PauseTransition(Duration.seconds(2)), nazad);
+        klizanje.setCycleCount(Animation.INDEFINITE);
+        klizanje.play();
     }
 
     public void prikaziPesmu(Pesma p) {
@@ -339,10 +380,13 @@ public final class PlayerBar extends StackPane {
         nota.getStyleClass().add("nota");
         pesmaIzvodjac.getStyleClass().add("pesma-izvodjac");
         pesmaNaslov.getStyleClass().add("pesma-naslov");
-        pesmaNaslov.setMaxWidth(270);
-        Tooltip vrati = new Tooltip("Klikni da ponovo prepoznaš pesmu");
+        punNaziv.getStyleClass().add("pun-naziv");
+        punNaziv.setShowDelay(Duration.millis(300));
+        punNaziv.setShowDuration(Duration.INDEFINITE);
         for (Label l : new Label[] {nota, pesmaIzvodjac, pesmaNaslov}) {
-            l.setTooltip(vrati);
+            // nikad "..." - ono sto ne stane, prikaze se klizanjem
+            l.setMinWidth(Region.USE_PREF_SIZE);
+            l.setTooltip(punNaziv);
             l.setOnMouseClicked(e -> {
                 if (prepoznato) {
                     naPonistavanje.run();
@@ -358,7 +402,19 @@ public final class PlayerBar extends StackPane {
             }
         });
 
-        HBox pesma = new HBox(6, nota, pesmaIzvodjac, pesmaNaslov, prepoznaj);
+        pesmaTekst.setAlignment(Pos.CENTER_LEFT);
+        Rectangle isecak = new Rectangle();
+        isecak.widthProperty().bind(pesmaOkvir.widthProperty());
+        isecak.heightProperty().bind(pesmaOkvir.heightProperty());
+        pesmaOkvir.setClip(isecak);
+        // okvir sme da bude uzi od teksta - bas to je razlog da postoji
+        pesmaOkvir.setMinWidth(0);
+        pesmaOkvir.managedProperty().bind(nota.visibleProperty());
+        pesmaOkvir.visibleProperty().bind(nota.visibleProperty());
+        pesmaTekst.widthProperty().addListener((o, a, b) -> osveziKlizanje());
+        pesmaOkvir.widthProperty().addListener((o, a, b) -> osveziKlizanje());
+
+        HBox pesma = new HBox(6, pesmaOkvir, prepoznaj);
         pesma.setAlignment(Pos.CENTER_LEFT);
 
         VBox tekst = new VBox(4, ime, stanje, pesma);
