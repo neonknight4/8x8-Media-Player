@@ -148,6 +148,8 @@ public final class PlayerService {
     private volatile Consumer<Napredak> naNapredak = n -> { };
     private volatile Runnable naKrajNumere = () -> { };
     private ScheduledFuture<?> pracenjeNapretka;
+    /** Fajlovi koji nisu hteli da se puste, jedan za drugim. */
+    private volatile int losihZaredom;
 
     /**
      * Citanje naziva pesme sa strima ide svojom niti, ne radnikovom: zahtev ume
@@ -317,6 +319,8 @@ public final class PlayerService {
         pokusaj = 0;
         otkaziFade();
         otkaziPrimenuJacine();
+        // citanje naziva sa stare stanice bi inace upisalo njenu pesmu uz novu
+        otkaziCitanjeMeta();
         otkaziPovezivanje();
         javi(Stanje.POVEZIVANJE, "povezujem se...");
         izvrsi(() -> {
@@ -575,6 +579,22 @@ public final class PlayerService {
         }, sekundi, TimeUnit.SECONDS);
     }
 
+    /**
+     * Fajl koji libvlc ne ume da otvori preskace se kao da se zavrsio - inace
+     * red ostane zaglavljen u povezivanju. Posle tri zaredom se staje: red se
+     * vrti u krug, pa bi nedostupan folder (izvucen USB) preskakao doveka.
+     */
+    private void preskociLosFajl() {
+        losihZaredom++;
+        log.accept("Fajl ne moze da se pusti (" + losihZaredom + ". zaredom)");
+        if (losihZaredom >= 3) {
+            javi(Stanje.GRESKA, "fajlovi ne mogu da se puste");
+            return;
+        }
+        javi(Stanje.GRESKA, "fajl ne moze da se pusti");
+        naKrajNumere.run();
+    }
+
     private void javi(Stanje novo, String poruka) {
         stanje = novo;
         slusalac.accept(new Status(novo, zeljena, poruka, pesma));
@@ -655,6 +675,10 @@ public final class PlayerService {
                 return;
             }
             Pesma nova = icy.procitaj(stanica);
+            // citanje ume da traje i petnaest sekundi - stanica je mogla da se promeni
+            if (zeljena != stanica) {
+                return;
+            }
             if (nova != null && !nova.prazna() && !nova.equals(pesma)
                     && !nova.naslov().equalsIgnoreCase(stanica.ime())) {
                 pesma = nova;
@@ -668,6 +692,7 @@ public final class PlayerService {
         @Override
         public void playing(MediaPlayer mediaPlayer) {
             pokusaj = 0;
+            losihZaredom = 0;
             primeniJacinu();
             if (lokalni) {
                 pratiNapredak();
@@ -688,6 +713,10 @@ public final class PlayerService {
 
         @Override
         public void error(MediaPlayer mediaPlayer) {
+            if (lokalni) {
+                izvrsi(PlayerService.this::preskociLosFajl);
+                return;
+            }
             izvrsi(() -> zakaziPonovo("greska playera"));
         }
 
