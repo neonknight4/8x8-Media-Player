@@ -16,7 +16,8 @@ zna za JavaFX.
 - **auto-reconnect** kad strim pukne: 2s, 4s, 8s, 15s, pa svakih 30s
 - **fade out** ~2s pa stop, i momentalni stop
 - **naziv pesme** koja ide: iz ICY metapodataka strima, a za stanice koje ih ne
-  salju dugme PREPOZNAJ (shazamio, besplatno)
+  salju prepoznavanje zvuka - samo, na svakih 90s, ili dugmetom PREPOZNAJ
+  (shazamio, besplatno)
 - mute pored VOL; fade out; sekcije Domace (Pop/Rock/Folk/Ex-Yu), Zanrovi,
   Bez reklama, Omiljene, Sakrivene
 - **grupe omiljenih** (Pauza, Zagrevanje...): desni klik na karticu u omiljenima
@@ -44,8 +45,12 @@ za 5 od 14, a direktno citanje za 7 od 13 - ukljucujuci SomaFM i SWR3, gde vlcj
 vraca prazno. Cita se jedan blok pa se veza zatvara, na svakih 15 sekundi, da se
 ne trosi slusalacko mesto na manjim stanicama.
 
-Za stanice koje naziv uopste ne salju (OK radio, Naxi, Pink, 202...) postoji
-dugme **PREPOZNAJ** u donjem baru.
+Za stanice koje naziv uopste ne salju (OK radio, Naxi, Pink, 202...) pesma se
+prepoznaje sama: prvi put 20 sekundi posle pocetka, pa na svakih 90 dok
+stanica svira, da naziv ne ostane od pesme koja je prosla. Ako ne prepozna
+(reklama, prica), stari naziv se brise. Razmak se menja kljucem
+`prepoznavanje.auto` u konfiguraciji, a `0` ga gasi. Uvek postoji i dugme
+**PREPOZNAJ** u donjem baru.
 
 Prepoznaje se preko biblioteke [shazamio](https://github.com/shazamio/ShazamIO),
 u zasebnom Python procesu - isto kao sto HUB zove yt-dlp i ffmpeg. Skripta snimi

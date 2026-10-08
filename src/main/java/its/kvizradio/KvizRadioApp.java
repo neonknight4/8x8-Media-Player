@@ -105,11 +105,17 @@ public class KvizRadioApp extends Application {
     /** Stanica za koju prepoznavanje upravo traje; null znaci da ne traje. */
     private Stanica prepoznajemZa;
     private int limit = 40;
+    /** Na koliko sekundi se pesma prepoznaje sama; 0 znaci samo dugmetom. */
+    private int autoSekundi;
+    /** Stanica kojoj tece automatsko prepoznavanje, i kad sme sledece. */
+    private Stanica autoZa;
+    private long autoSledece;
 
     @Override
     public void start(Stage stage) {
         Properties konf = Podesavanja.konfiguracija();
         limit = Podesavanja.broj(konf, "limit", 40);
+        autoSekundi = Podesavanja.broj(konf, "prepoznavanje.auto", 90);
 
         long vlcOd = System.currentTimeMillis();
         try {
@@ -136,6 +142,12 @@ public class KvizRadioApp extends Application {
         player.postaviSlusaocaNapretka(n -> Platform.runLater(
                 () -> bar.napredak(n.protekloMs(), n.ukupnoMs())));
         player.postaviKrajNumere(() -> Platform.runLater(this::sledecaNumera));
+        if (autoSekundi > 0) {
+            javafx.animation.Timeline auto = new javafx.animation.Timeline(new javafx.animation.KeyFrame(
+                    javafx.util.Duration.seconds(5), e -> autoPrepoznaj()));
+            auto.setCycleCount(javafx.animation.Animation.INDEFINITE);
+            auto.play();
+        }
         sidebar = new Sidebar(this::otvori);
         sidebar.postavi(grupe(konf));
         plejlista = new Plejlista(this::pustiIzReda, this::pomeriURedu, this::izbaciIzReda,
@@ -858,6 +870,10 @@ public class KvizRadioApp extends Application {
      * (mereno: salje ih svaka treca). Ceka se na servis, pa ide van FX niti.
      */
     private void prepoznajPesmu() {
+        prepoznajPesmu(false);
+    }
+
+    private void prepoznajPesmu(boolean automatski) {
         Stanica sada = player.stanica();
         if (sada == null) {
             return;
@@ -886,8 +902,45 @@ public class KvizRadioApp extends Application {
                 // pocetno stanje pa moze odmah ponovo da se proba
                 zabelezi("Prepoznavanje: "
                         + ((PrepoznajService.Neuspeh) ishod).getMessage());
+                // automatski neuspeh je najcesce reklama ili prica izmedju
+                // pesama - stara prepoznata pesma tada sigurno vise ne ide
+                Pesma stara = player.pesma();
+                if (automatski && stara != null && Pesma.PREPOZNATO.equals(stara.izvor())) {
+                    player.postaviPesmu(null);
+                }
             }
         }));
+    }
+
+    /**
+     * Prepoznavanje bez dugmeta, za stanice koje naziv ne salju: na top 27
+     * domacih salju ga samo Play i Cool, a Naxi, LOLA, Hit FM i S kanali ne.
+     *
+     * Prvi put dvadeset sekundi posle pocetka, da strim stigne da javi naziv
+     * ako ga ima, pa na svakih {@link #autoSekundi} dok stanica svira - jedno
+     * prepoznavanje bi posle tri minuta pokazivalo pesmu koja je prosla.
+     */
+    private void autoPrepoznaj() {
+        Stanica sada = player.stanica();
+        if (player.stanje() != PlayerService.Stanje.SVIRA || player.lokalni() || sada == null) {
+            autoZa = null;
+            return;
+        }
+        long ms = System.currentTimeMillis();
+        if (sada != autoZa) {
+            autoZa = sada;
+            autoSledece = ms + 20_000;
+            return;
+        }
+        Pesma p = player.pesma();
+        if (p != null && Pesma.IZ_STRIMA.equals(p.izvor())) {
+            return;
+        }
+        if (prepoznajemZa != null || ms < autoSledece) {
+            return;
+        }
+        autoSledece = ms + autoSekundi * 1000L;
+        prepoznajPesmu(true);
     }
 
     /** Klik na prepoznatu pesmu je brise, pa se opet nudi dugme PREPOZNAJ. */
