@@ -58,6 +58,9 @@ public final class PlayerService {
     public record Status(Stanje stanje, Stanica stanica, String poruka, Pesma pesma) {
     }
 
+    /** Koliko dugo vreme sviranja sme da stoji pre nego sto se strim proglasi zaglavljenim. */
+    private static final int ZASTOJ_SEKUNDI = 5;
+
     /** Razmaci izmedju pokusaja povezivanja, u sekundama; posle se ponavlja poslednji. */
     private static final int[] CEKANJE = {2, 4, 8, 15, 30};
 
@@ -148,6 +151,7 @@ public final class PlayerService {
     private volatile Consumer<Napredak> naNapredak = n -> { };
     private volatile Runnable naKrajNumere = () -> { };
     private ScheduledFuture<?> pracenjeNapretka;
+    private ScheduledFuture<?> pracenjeZastoja;
     /** Fajlovi koji nisu hteli da se puste, jedan za drugim. */
     private volatile int losihZaredom;
 
@@ -648,6 +652,37 @@ public final class PlayerService {
             pracenjeNapretka.cancel(false);
             pracenjeNapretka = null;
         }
+        if (pracenjeZastoja != null) {
+            pracenjeZastoja.cancel(false);
+            pracenjeZastoja = null;
+        }
+    }
+
+    /**
+     * Strim koji zastane bez greske (wifi padne, TCP visi) libvlc ne prijavi
+     * nikako. Mereno sa serverom koji posle 8s prestane da salje a vezu drzi
+     * otvorenu: 90s stanje "svira", u tisini, bez ijednog dogadjaja.
+     *
+     * Zato se prati vreme sviranja: na zivom strimu raste svake sekunde (Naxi i
+     * 202 preko HLS-a, po 25s - nijednom nije stalo), a u zastoju stane cim se
+     * bafer isprazni. Kadrovi talasa za trake nisu znak - scope crta i tisinu,
+     * pa stizu i u zastoju.
+     */
+    private synchronized void pratiZastoj() {
+        final long[] vreme = {-1};
+        final long[] promenjeno = {System.nanoTime()};
+        pracenjeZastoja = radnik.scheduleAtFixedRate(() -> {
+            if (stanje != Stanje.SVIRA || lokalni) {
+                return;
+            }
+            long sada = plejer.status().time();
+            if (sada != vreme[0]) {
+                vreme[0] = sada;
+                promenjeno[0] = System.nanoTime();
+            } else if (System.nanoTime() - promenjeno[0] >= TimeUnit.SECONDS.toNanos(ZASTOJ_SEKUNDI)) {
+                zakaziPonovo("strim stao");
+            }
+        }, 1, 1, TimeUnit.SECONDS);
     }
 
     /** Pozicija u numeri; vlcj nema dogadjaj za to koji bi bio dovoljno gust. */
@@ -699,6 +734,7 @@ public final class PlayerService {
             } else {
                 citajMeta();
                 citajIcy();
+                pratiZastoj();
             }
             javi(Stanje.SVIRA, "");
         }
