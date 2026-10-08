@@ -50,11 +50,12 @@ public final class Spektar extends Canvas {
 
     /**
      * Klizni prosek nivoa i prosecno odstupanje od njega (oko dve sekunde
-     * pamcenja) - po njima se skalira prikaz. Negativan prosek znaci da skala
-     * jos nije postavljena.
+     * pamcenja) - po njima se skalira prikaz.
      */
-    private float prosek = -1f;
+    private float prosek;
     private float odstupanje;
+    /** Koliko je kadrova uslo u skalu od pocetka sviranja; 0 = jos nije postavljena. */
+    private int kadrova;
 
     public Spektar(int traka, double visina) {
         super(traka * (SIRINA_TRAKE + RAZMAK) - RAZMAK, visina);
@@ -89,10 +90,18 @@ public final class Spektar extends Canvas {
             zbir += v;
         }
         float sada = zbir / traka;
-        if (prosek < 0f) {
-            prosek = sada;
-            odstupanje = 0.1f * sada;
+        // prvi kadrovi posle pocetka su nule - nivoi jos nisu stigli - pa bi
+        // skala sela na nulu i sve sto dodje udaralo u plafon dok se ne digne
+        if (kadrova == 0 && sada <= 0f) {
+            nacrtaj();
+            return;
         }
+        // na pocetku obican prosek svega do sada, posle klizni: skala je tacna
+        // od prvog kadra, a ne tek kad se klizni prosek namesti. Na snimljenim
+        // nivoima sa pola sekunde nula na pocetku, udela traka u plafonu u
+        // prve dve sekunde: 30-46% -> 1-6%
+        kadrova++;
+        float brzina = Math.max(0.02f, 1f / kadrova);
         // Skala ide oko onoga sto je za ovu stanicu tipicno, a ne od vrha:
         // pod 1.5 odstupanja ispod proseka, plafon 2.5 iznad. Ranije je pod
         // bio 60% kliznog maksimuma, pa je na dinamicnijim stanicama jedan
@@ -100,12 +109,12 @@ public final class Spektar extends Canvas {
         // oba nacina, medijana visine trake: RdMix Classic Rock 0.06 -> 0.44,
         // 202 0.10 -> 0.39, LOLA 0.26 -> 0.45. Zajednicko pulsiranje svih
         // traka ostaje, jer se prosek pomera sporo - a ono nosi ritam.
-        prosek += (sada - prosek) * 0.02f;
+        prosek += (sada - prosek) * brzina;
         float rasipanje = 0f;
         for (float v : opseg) {
             rasipanje += Math.abs(v - prosek);
         }
-        odstupanje += (rasipanje / traka - odstupanje) * 0.02f;
+        odstupanje += (rasipanje / traka - odstupanje) * brzina;
         float pod = prosek - 1.5f * odstupanje;
         float raspon = Math.max(0.05f, 4f * odstupanje);
 
@@ -140,7 +149,9 @@ public final class Spektar extends Canvas {
     public void ugasi() {
         java.util.Arrays.fill(prikaz, 0f);
         java.util.Arrays.fill(vrhovi, 0f);
-        prosek = -1f;
+        prosek = 0f;
+        odstupanje = 0f;
+        kadrova = 0;
         nacrtaj();
     }
 
