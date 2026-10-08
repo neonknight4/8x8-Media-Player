@@ -76,6 +76,22 @@ public final class PlayerService {
     private static final String BEZ_CC_PROVERE = ":no-ts-cc-check";
 
     /**
+     * Stanice se po glasnoci razlikuju za 15 dB - mereno na 16 stanica, 40s
+     * svaka: Radio LOLA -6.5 LUFS, Radio Beograd 202 -21.6. Bez ovoga voditelj
+     * posle svake promene stanice trci do VOL-a.
+     *
+     * VLC-ov normvol samo utisava ono sto je glasnije od praga, pa sve stanice
+     * spusti otprilike na nivo najtise. Isti trenutak strima, sest stanica:
+     * raspon 15.4 dB bez filtera, 3.1 dB sa pragom 2 (podrazumevani), 7.3 dB sa
+     * pragom 4 (202 ostaje dole, ostale idu gore), sa 8 skoro bez dejstva.
+     * Cena je da je sve oko -22 LUFS, pa VOL ili pojacalo ide vise nego pre.
+     * Proban je i compressor: raspon 12 dB, a usput sve pojaca do klipovanja.
+     *
+     * Ide na fabriku kao i efekt za trake; vazi i za lokalne fajlove.
+     */
+    private static final String IZJEDNACI_GLASNOCU = "--audio-filter=normvol";
+
+    /**
      * Trake u baru: VLC-ov "visual" modul crta talasni oblik kao sliku, a mi iz
      * te slike citamo otklone - sama slika se nigde ne prikazuje, trake crta UI
      * u bojama aplikacije.
@@ -155,7 +171,7 @@ public final class PlayerService {
         this.fabrika = new MediaPlayerFactory(
                 "--audio-visual=visual", "--effect-list=scope",
                 "--effect-width=" + EFEKT_SIRINA, "--effect-height=" + EFEKT_VISINA,
-                "--no-video-title-show");
+                "--no-video-title-show", IZJEDNACI_GLASNOCU);
         this.plejer = fabrika.mediaPlayers().newEmbeddedMediaPlayer();
         this.formatKadra = new BufferFormatCallback() {
             @Override
