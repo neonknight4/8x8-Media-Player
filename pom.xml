@@ -6,7 +6,7 @@
 
     <groupId>its</groupId>
     <artifactId>KvizRadio</artifactId>
-    <version>1.5</version>
+    <version>1.6</version>
     <name>8x8 Media Player - KvizRadio</name>
 
     <properties>
