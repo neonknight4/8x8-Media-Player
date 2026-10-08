@@ -16,8 +16,8 @@ import javafx.scene.paint.Stop;
  *
  * Tri stvari koje ovo radi nad sirovim brojevima:
  * <ul>
- *   <li><b>skalira na klizni maksimum</b> - otkloni talasa retko idu do kraja,
- *       pa bi se bez toga koristila samo sredina visine;</li>
+ *   <li><b>skalira na tipican nivo stanice</b> - otkloni talasa retko idu do
+ *       kraja, pa bi se bez toga koristila samo sredina visine;</li>
  *   <li><b>brz uspon, spor pad</b> - inace trake trepere i zamaraju oko;</li>
  *   <li><b>vrh koji polako pada</b> - jedina "ukrasna" linija, kao na starim
  *       analizatorima.</li>
@@ -48,8 +48,13 @@ public final class Spektar extends Canvas {
     private final float[] prikaz;
     private final float[] vrhovi;
 
-    /** Klizni maksimum: po njemu se skalira prikaz, da se koristi cela visina. */
-    private float vrh;
+    /**
+     * Klizni prosek nivoa i prosecno odstupanje od njega (oko dve sekunde
+     * pamcenja) - po njima se skalira prikaz. Negativan prosek znaci da skala
+     * jos nije postavljena.
+     */
+    private float prosek = -1f;
+    private float odstupanje;
 
     public Spektar(int traka, double visina) {
         super(traka * (SIRINA_TRAKE + RAZMAK) - RAZMAK, visina);
@@ -79,19 +84,30 @@ public final class Spektar extends Canvas {
     public void crtaj(float[] sirovi) {
         int traka = prikaz.length;
         float[] opseg = sazmi(sirovi, traka);
-        float najveci = 0f;
+        float zbir = 0f;
         for (float v : opseg) {
-            najveci = Math.max(najveci, v);
+            zbir += v;
         }
-        // skala se odmah dize na novi maksimum, a polako spusta - da jedan tih
-        // trenutak ne raspamti skalu za sledecih par sekundi. Dno je nula, ne
-        // najtisa traka: inace bi zajednicko pulsiranje svih traka nestalo,
-        // a bas ono nosi ritam.
-        vrh = Math.max(najveci, vrh - 0.004f);
-        // donjih 60% skale se odseca: otkloni talasa retko padnu nisko, pa bi
-        // bez toga sve trake stajale u gornjoj trecini i jedva se micale
-        float pod = 0.6f * vrh;
-        float raspon = Math.max(0.1f, vrh - pod);
+        float sada = zbir / traka;
+        if (prosek < 0f) {
+            prosek = sada;
+            odstupanje = 0.1f * sada;
+        }
+        // Skala ide oko onoga sto je za ovu stanicu tipicno, a ne od vrha:
+        // pod 1.5 odstupanja ispod proseka, plafon 2.5 iznad. Ranije je pod
+        // bio 60% kliznog maksimuma, pa je na dinamicnijim stanicama jedan
+        // glasan trenutak odsekao skoro sve - snimljeni nivoi pa pusteni kroz
+        // oba nacina, medijana visine trake: RdMix Classic Rock 0.06 -> 0.44,
+        // 202 0.10 -> 0.39, LOLA 0.26 -> 0.45. Zajednicko pulsiranje svih
+        // traka ostaje, jer se prosek pomera sporo - a ono nosi ritam.
+        prosek += (sada - prosek) * 0.02f;
+        float rasipanje = 0f;
+        for (float v : opseg) {
+            rasipanje += Math.abs(v - prosek);
+        }
+        odstupanje += (rasipanje / traka - odstupanje) * 0.02f;
+        float pod = prosek - 1.5f * odstupanje;
+        float raspon = Math.max(0.05f, 4f * odstupanje);
 
         for (int i = 0; i < traka; i++) {
             // blago savijanje krive: tiho ide jos nize, glasno ostaje gore
@@ -124,7 +140,7 @@ public final class Spektar extends Canvas {
     public void ugasi() {
         java.util.Arrays.fill(prikaz, 0f);
         java.util.Arrays.fill(vrhovi, 0f);
-        vrh = 0f;
+        prosek = -1f;
         nacrtaj();
     }
 
