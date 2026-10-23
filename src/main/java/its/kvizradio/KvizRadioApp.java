@@ -15,6 +15,7 @@ import its.kvizradio.radio.Odeljak;
 import its.kvizradio.radio.Pesma;
 import its.kvizradio.radio.PrepoznajService;
 import its.kvizradio.radio.PrepoznajService;
+import its.kvizradio.radio.PreskakanjeReklama;
 import its.kvizradio.radio.RadioBrowserService;
 import its.kvizradio.radio.Sekcija;
 import its.kvizradio.radio.Stanica;
@@ -110,6 +111,9 @@ public class KvizRadioApp extends Application {
     /** Stanica kojoj tece automatsko prepoznavanje, i kad sme sledece. */
     private Stanica autoZa;
     private long autoSledece;
+    private final PreskakanjeReklama preskakanje = new PreskakanjeReklama();
+    /** Stanica na reklamama kojoj nema zamene - da se u log ne pise na svakih pet sekundi. */
+    private Stanica bezZamene;
 
     @Override
     public void start(Stage stage) {
@@ -137,17 +141,20 @@ public class KvizRadioApp extends Application {
         bar = new PlayerBar(this::dugmePlayStop, this::fadeOut, this::jacina,
                 this::prebaciPrigusenje, this::prepoznajPesmu, this::ponistiPrepoznatu,
                 () -> player.nivoi(), PlayerService.TRAKA,
-                this::prethodnaNumera, this::sledecaNumera, player::premotaj);
+                this::prethodnaNumera, this::sledecaNumera, player::premotaj,
+                this::prebaciPreskakanje);
 
         player.postaviSlusaocaNapretka(n -> Platform.runLater(
                 () -> bar.napredak(n.protekloMs(), n.ukupnoMs())));
         player.postaviKrajNumere(() -> Platform.runLater(this::sledecaNumera));
-        if (autoSekundi > 0) {
-            javafx.animation.Timeline auto = new javafx.animation.Timeline(new javafx.animation.KeyFrame(
-                    javafx.util.Duration.seconds(5), e -> autoPrepoznaj()));
-            auto.setCycleCount(javafx.animation.Animation.INDEFINITE);
-            auto.play();
-        }
+        // tece i kad je prepoznavanje.auto=0: preskakanje reklama ga trazi
+        javafx.animation.Timeline auto = new javafx.animation.Timeline(new javafx.animation.KeyFrame(
+                javafx.util.Duration.seconds(5), e -> {
+                    autoPrepoznaj();
+                    preskociReklamu();
+                }));
+        auto.setCycleCount(javafx.animation.Animation.INDEFINITE);
+        auto.play();
         sidebar = new Sidebar(this::otvori);
         sidebar.postavi(grupe(konf));
         plejlista = new Plejlista(this::pustiIzReda, this::pomeriURedu, this::izbaciIzReda,
@@ -162,6 +169,8 @@ public class KvizRadioApp extends Application {
 
         Properties stanje = Podesavanja.stanje();
         bar.postaviJacinu(Podesavanja.broj(stanje, "jacina", 70));
+        preskakanje.ukljuci(Boolean.parseBoolean(stanje.getProperty("preskakanje", "false")));
+        bar.prikaziPreskakanje(preskakanje.ukljuceno());
         player.jacina(bar.jacina());
         izabrana = poslednjaStanica(stanje);
         bar.pripremi(izabrana);
@@ -177,7 +186,8 @@ public class KvizRadioApp extends Application {
         stage.setMinHeight(640);
         stage.setScene(scena);
         stage.setOnCloseRequest(e -> {
-            Podesavanja.snimiStanje(bar.jacina(), izabrana == null ? null : izabrana.uJson());
+            Podesavanja.snimiStanje(bar.jacina(), izabrana == null ? null : izabrana.uJson(),
+                    preskakanje.ukljuceno());
             player.oslobodi();
         });
         stage.show();
@@ -826,6 +836,33 @@ public class KvizRadioApp extends Application {
     // -------------------------------------------------------------- radnje
 
     private void pusti(Stanica s) {
+        preskakanje.postaviSpisak(spisakZa(s));
+        pustiStanicu(s);
+    }
+
+    /**
+     * Spisak iz kog je stanica pustena, za preskakanje reklama: odeljak u kome
+     * je kartica (u omiljenima grupa), bez sakrivenih i onoga sto je filter
+     * sklonio. Odeljak sa samo tom stanicom nema sledecu, pa tada ceo prikaz.
+     *
+     * Stanica koje nema medju karticama (Space posle pokretanja pusti onu od
+     * prosli put) nema spisak - ne zna se odakle je, pa se i ne preskace.
+     */
+    private List<Stanica> spisakZa(Stanica s) {
+        if (!kartice.containsKey(s.uuid())) {
+            return List.of();
+        }
+        for (Odeljak o : ucitano) {
+            List<Stanica> vidljive = o.stanice().stream().filter(st -> kartice.containsKey(st.uuid())).toList();
+            if (vidljive.size() > 1 && vidljive.stream().anyMatch(st -> st.uuid().equals(s.uuid()))) {
+                return vidljive;
+            }
+        }
+        return kartice.values().stream().map(Kartica::stanica).toList();
+    }
+
+    /** Pustanje bez menjanja spiska - i kad se sa reklama prelazi na sledecu. */
+    private void pustiStanicu(Stanica s) {
         otkaziPrepoznavanje();
         skrol.requestFocus();
         bar.lokalniRezim(false);
@@ -897,11 +934,15 @@ public class KvizRadioApp extends Application {
             if (ishod instanceof Pesma p) {
                 zabelezi("Prepoznato: " + p.izvodjac() + " - " + p.naslov());
                 player.postaviPesmu(p);
+                preskakanje.prepoznata(sada);
             } else {
+                PrepoznajService.Neuspeh neuspeh = (PrepoznajService.Neuspeh) ishod;
                 // tiho: neuspeh ide samo u log, dugme je vec vraceno u
                 // pocetno stanje pa moze odmah ponovo da se proba
-                zabelezi("Prepoznavanje: "
-                        + ((PrepoznajService.Neuspeh) ishod).getMessage());
+                zabelezi("Prepoznavanje: " + neuspeh.getMessage());
+                if (neuspeh.nepoznata) {
+                    preskakanje.neprepoznata(sada);
+                }
                 // automatski neuspeh je najcesce reklama ili prica izmedju
                 // pesama - stara prepoznata pesma tada sigurno vise ne ide
                 Pesma stara = player.pesma();
@@ -919,10 +960,15 @@ public class KvizRadioApp extends Application {
      * Prvi put dvadeset sekundi posle pocetka, da strim stigne da javi naziv
      * ako ga ima, pa na svakih {@link #autoSekundi} dok stanica svira - jedno
      * prepoznavanje bi posle tri minuta pokazivalo pesmu koja je prosla.
+     * Dok se preskacu reklame, cesce: reklamu prepoznaju dva promasaja zaredom.
      */
     private void autoPrepoznaj() {
         Stanica sada = player.stanica();
-        if (player.stanje() != PlayerService.Stanje.SVIRA || player.lokalni() || sada == null) {
+        int razmak = autoSekundi;
+        if (preskakanje.ukljuceno() && (razmak <= 0 || razmak > PreskakanjeReklama.PREPOZNAVANJE_SEKUNDI)) {
+            razmak = PreskakanjeReklama.PREPOZNAVANJE_SEKUNDI;
+        }
+        if (razmak <= 0 || player.stanje() != PlayerService.Stanje.SVIRA || player.lokalni() || sada == null) {
             autoZa = null;
             return;
         }
@@ -939,8 +985,36 @@ public class KvizRadioApp extends Application {
         if (prepoznajemZa != null || ms < autoSledece) {
             return;
         }
-        autoSledece = ms + autoSekundi * 1000L;
+        autoSledece = ms + razmak * 1000L;
         prepoznajPesmu(true);
+    }
+
+    /**
+     * Kad na stanici krenu reklame, prelazi se na sledecu iz spiska odakle je
+     * pustena - samo dok je ukljuceno dugme BEZ REKLAMA.
+     */
+    private void preskociReklamu() {
+        Stanica sada = player.stanica();
+        if (!preskakanje.ukljuceno() || player.stanje() != PlayerService.Stanje.SVIRA
+                || player.lokalni() || sada == null || !preskakanje.reklama(sada, player.bezPesmeMs())) {
+            return;
+        }
+        Stanica sledeca = preskakanje.sledeca(sada);
+        if (sledeca == null) {
+            if (sada != bezZamene) {
+                bezZamene = sada;
+                zabelezi("Reklame na " + sada.ime() + " - u spisku nema druge stanice, ostajem");
+            }
+            return;
+        }
+        zabelezi("Reklame na " + sada.ime() + " - prelazim na " + sledeca.ime());
+        pustiStanicu(sledeca);
+    }
+
+    private void prebaciPreskakanje() {
+        preskakanje.ukljuci(!preskakanje.ukljuceno());
+        bar.prikaziPreskakanje(preskakanje.ukljuceno());
+        zabelezi("Preskakanje reklama " + (preskakanje.ukljuceno() ? "ukljuceno" : "iskljuceno"));
     }
 
     /** Klik na prepoznatu pesmu je brise, pa se opet nudi dugme PREPOZNAJ. */

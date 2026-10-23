@@ -63,6 +63,7 @@ public final class PlayerBar extends StackPane {
     private final Slider jacina = new Slider(0, 100, 70);
     private final Label jacinaBroj = new Label("70");
     private final Label fade = new Label(Tekst.razmaknuto("FADE OUT"));
+    private final Label preskakanje = new Label(Tekst.razmaknuto("BEZ REKLAMA"));
     private final Polygon trougao = new Polygon(0, 0, 0, 24, 20, 12);
     private final Rectangle kvadrat = new Rectangle(17, 17);
     private final HBox pauzaIkona = new HBox(5, new Rectangle(5, 18), new Rectangle(5, 18));
@@ -91,7 +92,8 @@ public final class PlayerBar extends StackPane {
     public PlayerBar(Runnable naDugme, Runnable naFade, Consumer<Integer> naJacinu,
             Runnable naMute, Runnable naPrepoznavanje, Runnable naPonistavanje,
             Supplier<float[]> nivoi, int traka,
-            Runnable naPrethodnu, Runnable naSledecu, Consumer<Double> naPremotavanje) {
+            Runnable naPrethodnu, Runnable naSledecu, Consumer<Double> naPremotavanje,
+            Runnable naPreskakanje) {
 
         this.prethodna = maloDugme(false, naPrethodnu);
         this.sledeca = maloDugme(true, naSledecu);
@@ -118,7 +120,7 @@ public final class PlayerBar extends StackPane {
         // prozor daje vise mesta za naziv pesme.
         levo.maxWidthProperty().bind(javafx.beans.binding.Bindings.max(220,
                 widthProperty().divide(2).subtract(31 + 16 + 32 + 34 + spektar.getWidth())));
-        HBox strane = new HBox(levo, spektar, razmak, desno(naFade, naMute));
+        HBox strane = new HBox(levo, spektar, razmak, desno(naFade, naMute, naPreskakanje));
         strane.setAlignment(Pos.CENTER);
         HBox.setMargin(spektar, new Insets(0, 0, 0, 34));
 
@@ -157,6 +159,9 @@ public final class PlayerBar extends StackPane {
             n.setVisible(da);
             n.setManaged(da);
         }
+        // fajl sa diska nema reklama
+        preskakanje.setVisible(!da);
+        preskakanje.setManaged(!da);
         if (!da) {
             napredak(0, 0);
         }
@@ -281,6 +286,11 @@ public final class PlayerBar extends StackPane {
     public void prepoznavanjeUToku(boolean traje) {
         prepoznaj.setText(Tekst.razmaknuto(traje ? "SLUŠAM..." : "PREPOZNAJ"));
         prepoznaj.setDisable(traje);
+    }
+
+    /** Zlatno kad je preskakanje reklama ukljuceno. */
+    public void prikaziPreskakanje(boolean ukljuceno) {
+        Sidebar.postaviKlasu(preskakanje, "ukljuceno", ukljuceno);
     }
 
     /** Fade je u toku - dugme to pokazuje dok jacina pada. */
@@ -455,7 +465,7 @@ public final class PlayerBar extends StackPane {
         return dugme;
     }
 
-    private HBox desno(Runnable naFade, Runnable naMute) {
+    private HBox desno(Runnable naFade, Runnable naMute, Runnable naPreskakanje) {
         Label oznaka = new Label(Tekst.razmaknuto("VOL"));
         oznaka.getStyleClass().add("oznaka");
 
@@ -474,7 +484,12 @@ public final class PlayerBar extends StackPane {
             }
         });
 
-        HBox box = new HBox(26, vol, fade);
+        preskakanje.getStyleClass().add("prepoznaj-dugme");
+        preskakanje.setTooltip(new Tooltip(
+                "Kad krenu reklame, prelazi na sledeću stanicu iz istog spiska"));
+        preskakanje.setOnMouseClicked(e -> naPreskakanje.run());
+
+        HBox box = new HBox(26, preskakanje, vol, fade);
         box.setAlignment(Pos.CENTER_RIGHT);
         return box;
     }

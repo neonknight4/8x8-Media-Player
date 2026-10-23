@@ -37,6 +37,18 @@ public final class IcyMeta {
      * @return pesma, ili null ako strim ne salje naziv
      */
     public Pesma procitaj(Stanica stanica) {
+        String naslov = procitajNaslov(stanica);
+        return Pesma.upotrebljivNaziv(naslov) ? Pesma.izNaziva(naslov, Pesma.IZ_STRIMA) : null;
+    }
+
+    /**
+     * Naslov onakav kakav je stigao - i kad nije pesma (prazan, ime stanice,
+     * sajt). Po tome se vidi da pesma ne ide, sto je preskakanju reklama znak.
+     *
+     * @return naslov, prazan ako ga strim salje praznog, ili null ako strim
+     *         ICY ne salje ili citanje nije uspelo
+     */
+    public String procitajNaslov(Stanica stanica) {
         try {
             HttpRequest zahtev = HttpRequest.newBuilder(URI.create(stanica.url()))
                     .header("Icy-MetaData", "1")
@@ -58,8 +70,8 @@ public final class IcyMeta {
                         return null;
                     }
                     String naslov = procitajBlok(ulaz);
-                    if (Pesma.upotrebljivNaziv(naslov)) {
-                        return Pesma.izNaziva(naslov, Pesma.IZ_STRIMA);
+                    if (naslov != null) {
+                        return naslov;
                     }
                 }
             }

@@ -13,8 +13,8 @@ import java.util.Properties;
  *   <li>{@code kvizradio.properties} - levi meni; prvi put se prekopira iz
  *       aplikacije, posle je tvoj i vise se ne dira, pa izmene tagova ne
  *       nestaju pri sledecem pokretanju;</li>
- *   <li>{@code stanje.properties} - jacina i poslednja stanica, pise ih sama
- *       aplikacija pri gasenju.</li>
+ *   <li>{@code stanje.properties} - jacina, poslednja stanica i da li se
+ *       preskacu reklame; pise ih sama aplikacija pri gasenju.</li>
  * </ul>
  */
 public final class Podesavanja {
@@ -54,10 +54,11 @@ public final class Podesavanja {
         return p;
     }
 
-    public static void snimiStanje(int jacina, String stanicaJson) {
+    public static void snimiStanje(int jacina, String stanicaJson, boolean preskakanje) {
         StringBuilder sb = new StringBuilder();
         sb.append("# Jacina i poslednja stanica - pise ih sama aplikacija pri gasenju.\n");
         sb.append("jacina=").append(jacina).append('\n');
+        sb.append("preskakanje=").append(preskakanje).append('\n');
         if (stanicaJson != null && !stanicaJson.isBlank()) {
             // jedna linija, escapovan \ da Properties procita nazad isto
             sb.append("stanica=").append(stanicaJson.replace("\\", "\\\\")).append('\n');

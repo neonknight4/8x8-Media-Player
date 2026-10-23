@@ -143,6 +143,10 @@ public final class PlayerService {
     private ScheduledFuture<?> citanjeMeta;
     private ScheduledFuture<?> citanjeIcy;
     private volatile Pesma pesma;
+    /** Strim je na ovoj stanici vec slao nazive pesama - tek tada prazan naslov nesto znaci. */
+    private volatile boolean saljeNaziv;
+    /** Od kada strim javlja da pesma ne ide; 0 dok ide pesma. */
+    private volatile long bezPesmeOd;
 
     private final IcyMeta icy = new IcyMeta();
 
@@ -425,6 +429,16 @@ public final class PlayerService {
     }
 
     /**
+     * Koliko dugo strim javlja da pesma ne ide (prazan naslov, ime stanice),
+     * a ranije je na istoj stanici slao nazive pesama. Nula dok pesma ide, i za
+     * stanice koje naziv ne salju - tu se o reklamama ovako nista ne zna.
+     */
+    public long bezPesmeMs() {
+        long od = bezPesmeOd;
+        return od == 0 ? 0 : System.currentTimeMillis() - od;
+    }
+
+    /**
      * Visine traka, 0..1, sveze koliko i poslednji kadar talasa. Kad nista ne
      * svira, sve su nule - pa se trake same spuste.
      */
@@ -640,6 +654,9 @@ public final class PlayerService {
     }
 
     private synchronized void otkaziCitanjeMeta() {
+        // sta je procitano odnosi se na staru stanicu
+        saljeNaziv = false;
+        bezPesmeOd = 0;
         if (citanjeMeta != null) {
             citanjeMeta.cancel(false);
             citanjeMeta = null;
@@ -709,15 +726,22 @@ public final class PlayerService {
             if (stanica == null) {
                 return;
             }
-            Pesma nova = icy.procitaj(stanica);
+            String naslov = icy.procitajNaslov(stanica);
             // citanje ume da traje i petnaest sekundi - stanica je mogla da se promeni
             if (zeljena != stanica) {
                 return;
             }
-            if (nova != null && !nova.prazna() && !nova.equals(pesma)
-                    && !nova.naslov().equalsIgnoreCase(stanica.ime())) {
-                pesma = nova;
-                javi(stanje, "");
+            Pesma nova = Pesma.upotrebljivNaziv(naslov) ? Pesma.izNaziva(naslov, Pesma.IZ_STRIMA) : null;
+            if (nova != null && !nova.prazna() && !nova.naslov().equalsIgnoreCase(stanica.ime())) {
+                saljeNaziv = true;
+                bezPesmeOd = 0;
+                if (!nova.equals(pesma)) {
+                    pesma = nova;
+                    javi(stanje, "");
+                }
+            } else if (naslov != null && saljeNaziv && bezPesmeOd == 0) {
+                // stanica koja salje nazive je prestala: reklama, vesti ili prica
+                bezPesmeOd = System.currentTimeMillis();
             }
         }, 0, 15, TimeUnit.SECONDS);
     }

@@ -22,6 +22,8 @@ zna za JavaFX.
   Bez reklama, Omiljene, Sakrivene
 - **grupe omiljenih** (Pauza, Zagrevanje...): desni klik na karticu u omiljenima
 - **spektar** u donjem baru dok muzika svira - zlatne trake, brojevi iz VLC-a
+- **preskakanje reklama** (dugme BEZ REKLAMA): kad pesma prestane, prelazi na
+  sledecu stanicu iz istog spiska
 - precice: `Space` play/stop, `F` fade out, strelice jacina
 
 ## Instalacija
@@ -88,6 +90,37 @@ oba izbacena. AcoustID za radio ne radi: na SomaFM strimu gde ICY javlja tacan
 naziv (`Electric Skychurch - Heaven`) vraca `{"results": []}` i za 20s i za 60s
 otiska, jer indeksira otiske **celih snimaka** i poredi ih po trajanju. To se ne
 popravlja podesavanjem.
+
+## Preskakanje reklama
+
+Dugme **BEZ REKLAMA** u donjem baru, levo od VOL; zlatno je kad je ukljuceno i
+pamti se izmedju pokretanja. Kad na stanici krenu reklame, prelazi se na
+sledecu stanicu **iz istog spiska odakle je pustena**: zanr, domace, omiljene -
+u omiljenima ista grupa (Pauza, Zagrevanje...). Spisak se pamti u trenutku
+klika, pa vazi i kad se posle ode na drugu sekciju.
+
+Reklama se ne cuje, nego se zakljucuje iz toga da pesma ne ide:
+
+| stanica | znak | kada |
+|---|---|---|
+| salje naziv (ICY) | umesto pesme stigne prazan naslov, ime stanice ili sajt (`Radio 021 - www.021.rs`) | posle 30s takvog stanja - dzingl izmedju pesama je kraci |
+| ne salje naziv | Shazam dvaput zaredom kaze da pesmu ne zna | prepoznaje se na 30s umesto na 90s, dok je dugme ukljuceno |
+
+Kvar prepoznavanja (nema Pythona, Shazam ne odgovori) se **ne** racuna kao
+reklama - inace bi pokvaren shazamio preskakao svaku stanicu.
+
+Preskocena stanica se 5 minuta ne bira ponovo (reklamni blok traje par minuta).
+Kad su sve u spisku na reklamama, ostaje se gde jeste. Stanica pustena sa
+`Space` odmah posle pokretanja (ona od prosli put) nema spisak, pa se ne
+preskace dok se ne klikne neka kartica.
+
+Ogranicenja:
+
+- isto izgleda i prica voditelja ili vesti, pa se i to preskace;
+- domaca pesma koju Shazam ne zna (Yu Eco: Jelena Rozga) izgleda kao reklama;
+- stanica koja tokom reklama ostavi naziv poslednje pesme se ne prepoznaje;
+- dok je ukljuceno, Shazam se zove dvaput u minuti - nezvanicni API, pa vise
+  poziva znaci i veci rizik da pocne da odbija.
 
 ## Zahtevi
 
@@ -280,7 +313,7 @@ Stoje van instalacije, u `%APPDATA%\KvizRadio` (Windows) odnosno
 | `mreze.json` | mreze bez reklama (Radio Caprice, SomaFM, Radio Paradise...) |
 | `omiljene.json` | omiljene stanice |
 | `omiljene-grupe.json` | koja omiljena stanica ide u koju grupu |
-| `stanje.properties` | jacina i poslednja stanica |
+| `stanje.properties` | jacina, poslednja stanica, preskakanje reklama |
 | `kes/` | odgovori API-ja, vaze 24h |
 
 Prve dve se prvi put prekopiraju iz aplikacije i posle su tvoje - tagovi na
