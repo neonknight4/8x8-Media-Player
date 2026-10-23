@@ -732,13 +732,17 @@ public final class PlayerService {
                 return;
             }
             Pesma nova = Pesma.upotrebljivNaziv(naslov) ? Pesma.izNaziva(naslov, Pesma.IZ_STRIMA) : null;
-            if (nova != null && !nova.prazna() && !nova.naslov().equalsIgnoreCase(stanica.ime())) {
+            boolean upotrebljiva = nova != null && !nova.prazna() && !nova.naslov().equalsIgnoreCase(stanica.ime());
+            if (upotrebljiva && !nova.equals(pesma)) {
+                pesma = nova;
+                javi(stanje, "");
+            }
+            // za reklame je pesma samo "Izvodjac - Naslov": Play izmedju pesama
+            // salje "Instaliraj PLAY radio aplikaciju..." - prikaze se, ali to
+            // nije pesma
+            if (upotrebljiva && !nova.izvodjac().isBlank()) {
                 saljeNaziv = true;
                 bezPesmeOd = 0;
-                if (!nova.equals(pesma)) {
-                    pesma = nova;
-                    javi(stanje, "");
-                }
             } else if (naslov != null && saljeNaziv && bezPesmeOd == 0) {
                 // stanica koja salje nazive je prestala: reklama, vesti ili prica
                 bezPesmeOd = System.currentTimeMillis();

@@ -22,8 +22,8 @@ zna za JavaFX.
   Bez reklama, Omiljene, Sakrivene
 - **grupe omiljenih** (Pauza, Zagrevanje...): desni klik na karticu u omiljenima
 - **spektar** u donjem baru dok muzika svira - zlatne trake, brojevi iz VLC-a
-- **preskakanje reklama** (dugme BEZ REKLAMA): kad pesma prestane, prelazi na
-  sledecu stanicu iz istog spiska
+- **preskakanje reklama** (dugme BEZ REKLAMA): kad stanica javi da pesma ne
+  ide, prelazi na sledecu iz istog spiska - samo stanice koje salju naziv
 - precice: `Space` play/stop, `F` fade out, strelice jacina
 
 ## Instalacija
@@ -97,17 +97,28 @@ Dugme **BEZ REKLAMA** u donjem baru, levo od VOL; zlatno je kad je ukljuceno i
 pamti se izmedju pokretanja. Kad na stanici krenu reklame, prelazi se na
 sledecu stanicu **iz istog spiska odakle je pustena**: zanr, domace, omiljene -
 u omiljenima ista grupa (Pauza, Zagrevanje...). Spisak se pamti u trenutku
-klika, pa vazi i kad se posle ode na drugu sekciju.
+klika, pa vazi i posle Stop/Space kad se u medjuvremenu ode na drugu sekciju.
 
-Reklama se ne cuje, nego se zakljucuje iz toga da pesma ne ide:
+Reklama se ne cuje, nego se zakljucuje iz naziva koji stanica salje (ICY):
+umesto `Izvodjac - Naslov` stigne prazan naslov, ime stanice, sajt
+(`Radio 021 - www.021.rs`) ili tekst bez izvodjaca (Play: `Instaliraj PLAY
+radio aplikaciju za Iphone i Android`). Kad tako ostane 30s, prelazi se -
+dzingl izmedju pesama je kraci (na 021 ~10s). Uzivo: 021 je presao na pauzu u
+17:19:38, aplikacija je presla na sledecu stanicu u 17:20:12.
 
-| stanica | znak | kada |
-|---|---|---|
-| salje naziv (ICY) | umesto pesme stigne prazan naslov, ime stanice ili sajt (`Radio 021 - www.021.rs`) | posle 30s takvog stanja - dzingl izmedju pesama je kraci |
-| ne salje naziv | Shazam dvaput zaredom kaze da pesmu ne zna | prepoznaje se na 30s umesto na 90s, dok je dugme ukljuceno |
+**Radi samo na stanicama koje salju naziv pesme.** Mereno 25 minuta na 14
+domacih stanica (23.10.2026): salju ga Play, Cool, 021 i Kiss FM; ostale
+(Naxi, OK, Lola, S kanali, Pink...) salju prazno ili nista, i na njima dugme
+ne radi nista.
 
-Kvar prepoznavanja (nema Pythona, Shazam ne odgovori) se **ne** racuna kao
-reklama - inace bi pokvaren shazamio preskakao svaku stanicu.
+Za te stanice je probano sa Shazamom (dva promasaja zaredom = reklama) i
+izbaceno. Uzivo, za 13 minuta na "Sve domace", preskocio je tri stanice, svaki
+put na kraju pesme: dzingl, voditelj ili domaca pesma koju Shazam ne zna
+izgledaju isto kao reklama. Morava je 5 minuta zaredom bila "nepoznata", a
+isecak bez pauza kakve ima govor - verovatno lokalna muzika. Obrnuto, dzingl
+na produkcijskoj muzici ume da "prepozna" (`Suncatcher - Good Times` na folk
+stanici), pa reklamu sa poznatom podlogom ne bi preskocio. Na kvizu je
+skakanje usred muzike gore od propustene reklame.
 
 Preskocena stanica se 5 minuta ne bira ponovo (reklamni blok traje par minuta).
 Kad su sve u spisku na reklamama, ostaje se gde jeste. Stanica pustena sa
@@ -117,10 +128,13 @@ preskace dok se ne klikne neka kartica.
 Ogranicenja:
 
 - isto izgleda i prica voditelja ili vesti, pa se i to preskace;
-- domaca pesma koju Shazam ne zna (Yu Eco: Jelena Rozga) izgleda kao reklama;
-- stanica koja tokom reklama ostavi naziv poslednje pesme se ne prepoznaje;
-- dok je ukljuceno, Shazam se zove dvaput u minuti - nezvanicni API, pa vise
-  poziva znaci i veci rizik da pocne da odbija.
+- stanica koja tokom reklama ostavi naziv poslednje pesme se ne prepoznaje -
+  Cool radio, sudeci po merenju (jedna pesma stoji 5 minuta);
+- naslov bez " - " se racuna kao "nije pesma", pa stanica koja pesme salje
+  kao ime fajla (Kiss FM preko zeno.fm: `magla-krive-drine-album-...`) moze
+  da bude preskocena usred pesme;
+- ako se stanica pusti usred reklama, prelaz ceka prvu pesmu - tek tada se
+  zna da stanica salje nazive.
 
 ## Zahtevi
 

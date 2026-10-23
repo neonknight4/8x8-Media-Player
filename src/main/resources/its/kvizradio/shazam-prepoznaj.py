@@ -46,9 +46,7 @@ async def prepoznaj(putanja: str) -> dict:
         return {"greska": f"Shazam nije odgovorio za {SHAZAM_ROK}s."}
     trag = odgovor.get("track")
     if not trag:
-        # "nepoznata" razlikuje odgovor bez pesme od kvara - samo on sme da
-        # se racuna kao reklama
-        return {"greska": "Pesma nije prepoznata.", "nepoznata": True}
+        return {"greska": "Pesma nije prepoznata."}
     return {"izvodjac": trag.get("subtitle", ""), "naslov": trag.get("title", "")}
 
 

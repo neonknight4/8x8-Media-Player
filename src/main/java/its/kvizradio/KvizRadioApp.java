@@ -836,7 +836,12 @@ public class KvizRadioApp extends Application {
     // -------------------------------------------------------------- radnje
 
     private void pusti(Stanica s) {
-        preskakanje.postaviSpisak(spisakZa(s));
+        List<Stanica> spisak = spisakZa(s);
+        // Space posle stopa pusti istu stanicu, a prikaz je mozda vec drugi -
+        // tada vazi spisak odakle je stvarno krenula
+        if (!spisak.isEmpty() || !preskakanje.uSpisku(s)) {
+            preskakanje.postaviSpisak(spisak);
+        }
         pustiStanicu(s);
     }
 
@@ -934,15 +939,11 @@ public class KvizRadioApp extends Application {
             if (ishod instanceof Pesma p) {
                 zabelezi("Prepoznato: " + p.izvodjac() + " - " + p.naslov());
                 player.postaviPesmu(p);
-                preskakanje.prepoznata(sada);
             } else {
-                PrepoznajService.Neuspeh neuspeh = (PrepoznajService.Neuspeh) ishod;
                 // tiho: neuspeh ide samo u log, dugme je vec vraceno u
                 // pocetno stanje pa moze odmah ponovo da se proba
-                zabelezi("Prepoznavanje: " + neuspeh.getMessage());
-                if (neuspeh.nepoznata) {
-                    preskakanje.neprepoznata(sada);
-                }
+                zabelezi("Prepoznavanje: "
+                        + ((PrepoznajService.Neuspeh) ishod).getMessage());
                 // automatski neuspeh je najcesce reklama ili prica izmedju
                 // pesama - stara prepoznata pesma tada sigurno vise ne ide
                 Pesma stara = player.pesma();
@@ -960,15 +961,10 @@ public class KvizRadioApp extends Application {
      * Prvi put dvadeset sekundi posle pocetka, da strim stigne da javi naziv
      * ako ga ima, pa na svakih {@link #autoSekundi} dok stanica svira - jedno
      * prepoznavanje bi posle tri minuta pokazivalo pesmu koja je prosla.
-     * Dok se preskacu reklame, cesce: reklamu prepoznaju dva promasaja zaredom.
      */
     private void autoPrepoznaj() {
         Stanica sada = player.stanica();
-        int razmak = autoSekundi;
-        if (preskakanje.ukljuceno() && (razmak <= 0 || razmak > PreskakanjeReklama.PREPOZNAVANJE_SEKUNDI)) {
-            razmak = PreskakanjeReklama.PREPOZNAVANJE_SEKUNDI;
-        }
-        if (razmak <= 0 || player.stanje() != PlayerService.Stanje.SVIRA || player.lokalni() || sada == null) {
+        if (autoSekundi <= 0 || player.stanje() != PlayerService.Stanje.SVIRA || player.lokalni() || sada == null) {
             autoZa = null;
             return;
         }
@@ -985,7 +981,7 @@ public class KvizRadioApp extends Application {
         if (prepoznajemZa != null || ms < autoSledece) {
             return;
         }
-        autoSledece = ms + razmak * 1000L;
+        autoSledece = ms + autoSekundi * 1000L;
         prepoznajPesmu(true);
     }
 
@@ -996,7 +992,7 @@ public class KvizRadioApp extends Application {
     private void preskociReklamu() {
         Stanica sada = player.stanica();
         if (!preskakanje.ukljuceno() || player.stanje() != PlayerService.Stanje.SVIRA
-                || player.lokalni() || sada == null || !preskakanje.reklama(sada, player.bezPesmeMs())) {
+                || player.lokalni() || sada == null || !preskakanje.reklama(player.bezPesmeMs())) {
             return;
         }
         Stanica sledeca = preskakanje.sledeca(sada);

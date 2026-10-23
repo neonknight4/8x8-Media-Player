@@ -486,7 +486,8 @@ public final class PlayerBar extends StackPane {
 
         preskakanje.getStyleClass().add("prepoznaj-dugme");
         preskakanje.setTooltip(new Tooltip(
-                "Kad krenu reklame, prelazi na sledeću stanicu iz istog spiska"));
+                "Kad krenu reklame, prelazi na sledeću stanicu iz istog spiska.\n"
+                + "Radi na stanicama koje šalju naziv pesme."));
         preskakanje.setOnMouseClicked(e -> naPreskakanje.run());
 
         HBox box = new HBox(26, preskakanje, vol, fade);

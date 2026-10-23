@@ -27,19 +27,8 @@ public final class PrepoznajService {
 
     /** Nema alata, ili servis nije prepoznao - poruka ide korisniku. */
     public static class Neuspeh extends Exception {
-        /**
-         * Shazam je odgovorio, ali pesmu ne zna - reklama, prica, ili pesma
-         * koje nema u bazi. Sve ostalo (nema Pythona, rok, mreza) je kvar.
-         */
-        public final boolean nepoznata;
-
         public Neuspeh(String poruka) {
-            this(poruka, false);
-        }
-
-        public Neuspeh(String poruka, boolean nepoznata) {
             super(poruka);
-            this.nepoznata = nepoznata;
         }
     }
 
@@ -175,11 +164,11 @@ public final class PrepoznajService {
             Object koren = Json.parsiraj(izlaz);
             String greska = Json.tekst(Json.mapa(koren).get("greska"));
             if (!greska.isBlank()) {
-                throw new Neuspeh(greska, Boolean.TRUE.equals(Json.mapa(koren).get("nepoznata")));
+                throw new Neuspeh(greska);
             }
             String naslov = Json.tekst(Json.mapa(koren).get("naslov"));
             if (naslov.isBlank()) {
-                throw new Neuspeh("Pesma nije prepoznata.", true);
+                throw new Neuspeh("Pesma nije prepoznata.");
             }
             log.accept("Prepoznavanje: shazamio odgovorio");
             return new Pesma(Json.tekst(Json.mapa(koren).get("izvodjac")), naslov, Pesma.PREPOZNATO);

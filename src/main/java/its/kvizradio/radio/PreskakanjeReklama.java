@@ -9,16 +9,17 @@ import java.util.Map;
  * je pustena - zanr, domace, omiljene (u omiljenima ista grupa). Ukljucuje se
  * dugmetom; bez njega se nista ne menja.
  *
- * Reklama se ne cuje, nego se zakljucuje iz toga da pesma ne ide:
- * <ul>
- *   <li>stanica koja u ICY-u salje nazive pesama posalje prazan naslov, svoje
- *       ime ili sajt, i tako ostane bar {@link #ICY_BEZ_PESME_MS} - dzingl
- *       izmedju dve pesme je kraci;</li>
- *   <li>stanica bez naziva: Shazam {@link #NEPREPOZNATIH_ZAREDOM} puta zaredom
- *       odgovori da pesmu ne zna. Kvar (nema Pythona, rok) se ne broji.</li>
- * </ul>
- * Isto se vidi i kad ide prica ili vesti, pa se i one preskacu. Domaca pesma
- * koju Shazam ne zna takodje izgleda kao reklama.
+ * Reklama se ne cuje, nego se zakljucuje iz toga da pesma ne ide: stanica
+ * koja u ICY-u salje nazive pesama posalje prazan naslov, svoje ime, sajt ili
+ * tekst bez izvodjaca, i tako ostane bar {@link #ICY_BEZ_PESME_MS} - dzingl
+ * izmedju dve pesme je kraci. Isto se vidi i kad ide prica ili vesti, pa se i
+ * one preskacu.
+ *
+ * Stanice bez naziva se ne preskacu. Probano je i sa Shazamom (dva promasaja
+ * zaredom = reklama): uzivo je za 13 minuta preskocio tri stanice, svaki put
+ * na kraju pesme - dzingl, voditelj ili domaca pesma koju Shazam ne zna
+ * izgledaju isto kao reklama, a reklamu sa poznatom podlogom ume da
+ * "prepozna".
  *
  * Nema JavaFX-a: ovde je samo odluka, prebacivanje radi aplikacija.
  */
@@ -26,13 +27,6 @@ public final class PreskakanjeReklama {
 
     /** Koliko dugo ICY sme da javlja "nije pesma" pre nego sto se proglasi reklamom. */
     static final long ICY_BEZ_PESME_MS = 30_000;
-    static final int NEPREPOZNATIH_ZAREDOM = 2;
-    /**
-     * Dok je ukljuceno, pesma se prepoznaje na toliko sekundi umesto na
-     * prepoznavanje.auto (90) - dva promasaja na 90s bi stigla tek kad reklame
-     * prodju.
-     */
-    public static final int PREPOZNAVANJE_SEKUNDI = 30;
     /** Preskocena stanica se toliko ne bira ponovo - reklamni blok traje par minuta. */
     static final long ODMOR_MS = 5 * 60_000;
 
@@ -40,8 +34,6 @@ public final class PreskakanjeReklama {
     private List<Stanica> spisak = List.of();
     /** Kad je koja stanica napustena zbog reklama, po uuid-u. */
     private final Map<String, Long> preskocene = new HashMap<>();
-    private String neprepoznataUuid;
-    private int neprepoznatih;
 
     public boolean ukljuceno() {
         return ukljuceno;
@@ -55,28 +47,15 @@ public final class PreskakanjeReklama {
     public void postaviSpisak(List<Stanica> stanice) {
         spisak = List.copyOf(stanice);
         preskocene.clear();
-        neprepoznatih = 0;
     }
 
-    public void prepoznata(Stanica s) {
-        if (s.uuid().equals(neprepoznataUuid)) {
-            neprepoznatih = 0;
-        }
-    }
-
-    public void neprepoznata(Stanica s) {
-        if (s.uuid().equals(neprepoznataUuid)) {
-            neprepoznatih++;
-        } else {
-            neprepoznataUuid = s.uuid();
-            neprepoznatih = 1;
-        }
+    public boolean uSpisku(Stanica s) {
+        return spisak.stream().anyMatch(st -> st.uuid().equals(s.uuid()));
     }
 
     /** @param bezPesmeMs koliko dugo strim javlja da pesma ne ide, 0 ako ide ili ne javlja */
-    public boolean reklama(Stanica s, long bezPesmeMs) {
-        return bezPesmeMs >= ICY_BEZ_PESME_MS
-                || (s.uuid().equals(neprepoznataUuid) && neprepoznatih >= NEPREPOZNATIH_ZAREDOM);
+    public boolean reklama(long bezPesmeMs) {
+        return bezPesmeMs >= ICY_BEZ_PESME_MS;
     }
 
     /**
@@ -89,7 +68,6 @@ public final class PreskakanjeReklama {
         long ms = System.currentTimeMillis();
         preskocene.values().removeIf(t -> ms - t > ODMOR_MS);
         preskocene.put(sada.uuid(), ms);
-        neprepoznatih = 0;
 
         int mesto = -1;
         for (int i = 0; i < spisak.size(); i++) {
