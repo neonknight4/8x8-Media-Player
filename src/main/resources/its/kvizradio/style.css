@@ -621,6 +621,27 @@
     -fx-text-fill: -c-tekst-2;
 }
 
+/* --- slusane pesme (prozor istorije) ------------------------------------ */
+.istorija-dan {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -c-zlatna;
+    -fx-padding: 16 22 6 22;
+}
+
+.istorija-red {
+    -fx-padding: 8 22 8 22;
+}
+
+.istorija-red:hover {
+    -fx-background-color: -c-povrsina-2;
+}
+
+.istorija-sat {
+    -fx-font-size: 13px;
+    -fx-text-fill: -c-tekst-3;
+}
+
 /* --- slider jacine ------------------------------------------------------- */
 .slider .track {
     -fx-background-color: -c-ivica;

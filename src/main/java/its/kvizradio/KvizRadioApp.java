@@ -10,6 +10,7 @@ import its.kvizradio.lokalno.Numera;
 import its.kvizradio.lokalno.RedSviranja;
 import its.kvizradio.radio.Grupe;
 import its.kvizradio.radio.HiddenStore;
+import its.kvizradio.radio.IstorijaPesama;
 import its.kvizradio.radio.Meni;
 import its.kvizradio.radio.Odeljak;
 import its.kvizradio.radio.Pesma;
@@ -20,6 +21,7 @@ import its.kvizradio.radio.RadioBrowserService;
 import its.kvizradio.radio.Sekcija;
 import its.kvizradio.radio.Stanica;
 import its.kvizradio.ui.FolderKartica;
+import its.kvizradio.ui.IstorijaProzor;
 import its.kvizradio.ui.Kartica;
 import its.kvizradio.ui.PlayerBar;
 import its.kvizradio.ui.Plejlista;
@@ -70,6 +72,9 @@ public class KvizRadioApp extends Application {
     private final HiddenStore sakrivene = new HiddenStore(this::zabelezi);
     private final Grupe grupe = new Grupe(this::zabelezi);
     private final Biblioteka biblioteka = new Biblioteka(this::zabelezi);
+    private final IstorijaPesama istorija = new IstorijaPesama(this::zabelezi);
+    /** Pravi se pri prvom kliku na dugme - do tada nema potrebe. */
+    private IstorijaProzor istorijaProzor;
 
     /** Red sviranja po folderu - da se folder nastavi tamo gde je stao. */
     private final Map<java.nio.file.Path, RedSviranja> redovi = new LinkedHashMap<>();
@@ -142,7 +147,7 @@ public class KvizRadioApp extends Application {
                 this::prebaciPrigusenje, this::prepoznajPesmu, this::ponistiPrepoznatu,
                 () -> player.nivoi(), PlayerService.TRAKA,
                 this::prethodnaNumera, this::sledecaNumera, player::premotaj,
-                this::prebaciPreskakanje);
+                this::prebaciPreskakanje, this::otvoriIstoriju);
 
         player.postaviSlusaocaNapretka(n -> Platform.runLater(
                 () -> bar.napredak(n.protekloMs(), n.ukupnoMs())));
@@ -188,6 +193,10 @@ public class KvizRadioApp extends Application {
         stage.setOnCloseRequest(e -> {
             Podesavanja.snimiStanje(bar.jacina(), izabrana == null ? null : izabrana.uJson(),
                     preskakanje.ukljuceno());
+            // otvoren prozor istorije bi inace drzao aplikaciju zivom bez glavnog
+            if (istorijaProzor != null) {
+                istorijaProzor.zatvori();
+            }
             player.oslobodi();
         });
         stage.show();
@@ -1082,7 +1091,20 @@ public class KvizRadioApp extends Application {
             // umesto "Nijedna stanica" - ono sto ce Space pustiti
             bar.pripremi(izabrana);
         }
+        // ista pesma koju bar upravo prikazuje; sa diska nema stanice, pa se ne pise
+        if (istorija.zabelezi(st.stanica(), st.pesma()) && istorijaProzor != null) {
+            istorijaProzor.osvezi();
+        }
         osveziAktivnuKarticu();
+    }
+
+    /** Mini dugme pored naziva pesme. */
+    private void otvoriIstoriju() {
+        if (istorijaProzor == null) {
+            istorijaProzor = new IstorijaProzor(istorija, bar.getScene().getWindow(),
+                    () -> getHostServices().showDocument(istorija.fajl().toUri().toString()));
+        }
+        istorijaProzor.prikazi();
     }
 
     private void osveziAktivnuKarticu() {

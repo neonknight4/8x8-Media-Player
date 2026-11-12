@@ -93,7 +93,7 @@ public final class PlayerBar extends StackPane {
             Runnable naMute, Runnable naPrepoznavanje, Runnable naPonistavanje,
             Supplier<float[]> nivoi, int traka,
             Runnable naPrethodnu, Runnable naSledecu, Consumer<Double> naPremotavanje,
-            Runnable naPreskakanje) {
+            Runnable naPreskakanje, Runnable naIstoriju) {
 
         this.prethodna = maloDugme(false, naPrethodnu);
         this.sledeca = maloDugme(true, naSledecu);
@@ -114,7 +114,7 @@ public final class PlayerBar extends StackPane {
         HBox.setHgrow(razmak, Priority.ALWAYS);
         // spektar stoji uz podatke o stanici, a ne uz jacinu: desno bi ovoliki
         // naleteo na veliko dugme, a ovde je prostor ionako prazan
-        HBox levo = sada(naPrepoznavanje, naPonistavanje);
+        HBox levo = sada(naPrepoznavanje, naPonistavanje, naIstoriju);
         // tekst o stanici se siri samo dok spektar desno od njega ne stigne do
         // velikog dugmeta - na 1366px se ranije podvlacio pod dugme. Siri
         // prozor daje vise mesta za naziv pesme.
@@ -378,7 +378,7 @@ public final class PlayerBar extends StackPane {
         return n;
     }
 
-    private HBox sada(Runnable naPrepoznavanje, Runnable naPonistavanje) {
+    private HBox sada(Runnable naPrepoznavanje, Runnable naPonistavanje, Runnable naIstoriju) {
         ime.getStyleClass().add("sada-ime");
         ime.setMaxWidth(280);
         status.getStyleClass().add("status");
@@ -426,6 +426,11 @@ public final class PlayerBar extends StackPane {
 
         HBox pesma = new HBox(6, pesmaOkvir, prepoznaj);
         pesma.setAlignment(Pos.CENTER_LEFT);
+
+        // krug sa slusalicama/logom otvara slusane pesme - bez posebnog dugmeta,
+        // i kad nista ne svira, da se posle kviza vidi sta je islo
+        avatar.setCursor(Cursor.HAND);
+        avatar.setOnMouseClicked(e -> naIstoriju.run());
 
         VBox tekst = new VBox(4, ime, stanje, pesma);
         tekst.setAlignment(Pos.CENTER_LEFT);

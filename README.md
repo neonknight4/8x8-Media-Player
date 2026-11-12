@@ -24,6 +24,8 @@ zna za JavaFX.
 - **spektar** u donjem baru dok muzika svira - zlatne trake, brojevi iz VLC-a
 - **preskakanje reklama** (dugme BEZ REKLAMA): kad stanica javi da pesma ne
   ide, prelazi na sledecu iz istog spiska - samo stanice koje salju naziv
+- **slusane pesme**: svaka pesma sa trake (izvodjac i naslov) upise se sa
+  vremenom i stanicom u `pesme.txt`; klik na krug sa logom stanice otvara spisak
 - precice: `Space` play/stop, `F` fade out, strelice jacina
 
 ## Instalacija
@@ -328,6 +330,7 @@ Stoje van instalacije, u `%APPDATA%\KvizRadio` (Windows) odnosno
 | `omiljene.json` | omiljene stanice |
 | `omiljene-grupe.json` | koja omiljena stanica ide u koju grupu |
 | `stanje.properties` | jacina, poslednja stanica, preskakanje reklama |
+| `pesme.txt` | slusane pesme: `2026-11-12 21:42:05 \| Naxi Radio \| Oliver Mandić - Poludeću` |
 | `kes/` | odgovori API-ja, vaze 24h |
 
 Prve dve se prvi put prekopiraju iz aplikacije i posle su tvoje - tagovi na
