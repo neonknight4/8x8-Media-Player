@@ -30,16 +30,79 @@ zna za JavaFX.
 
 ## Instalacija
 
-Gotovi instaleri stoje na [Releases](https://github.com/neonknight4/8x8-Media-Player/releases);
-oba fajla pravi GitHub Actions iz istog taga.
+Gotovi instaleri stoje na [Releases](https://github.com/neonknight4/8x8-Media-Player/releases/latest);
+oba fajla pravi GitHub Actions iz istog taga (`v1.7`, `v1.8`...). Java se ne
+instalira ni u jednom slucaju - instaler nosi svoj runtime. Za build iz izvora
+vidi *Zahtevi*.
 
-| gde | fajl | kako |
+| gde | fajl | sta jos treba |
 |---|---|---|
-| Windows | `KvizRadio-1.1.exe` | dupli klik; nosi svoj VLC, Python i ffmpeg |
-| Linux (Debian/Ubuntu) | `kvizradio_1.1-1_amd64.deb` | `sudo apt install ./kvizradio_1.1-1_amd64.deb`; trazi sistemski `vlc` |
+| Windows 10/11 (64-bit) | `KvizRadio-<verzija>.exe` | nista - nosi svoj VLC, Python i ffmpeg |
+| Linux (Ubuntu 24.04 / Debian, amd64) | `kvizradio_<verzija>_amd64.deb` | `vlc` (apt ga povuce sam) |
 
-Java se ne instalira ni u jednom slucaju - instaler nosi svoj runtime. Za build
-iz izvora vidi *Zahtevi*.
+### Windows
+
+1. Sa [Releases](https://github.com/neonknight4/8x8-Media-Player/releases/latest)
+   skini `KvizRadio-<verzija>.exe` (~160 MB).
+2. Dupli klik. Instaler nije potpisan, pa Windows moze da javi
+   *"Windows protected your PC"* - **More info** -> **Run anyway**.
+3. Izaberi folder (podrazumevano `%LOCALAPPDATA%\KvizRadio`) i da li hoces
+   precicu na desktopu. Instalira se samo za tvog korisnika, administratorska
+   prava ne trebaju.
+4. Pokretanje: Start meni -> **KvizRadio**, ili precica na desktopu.
+
+Prepoznavanje pesme (dugme PREPOZNAJ) radi odmah, ne postavlja se nista.
+
+**Nova verzija:** pokreni noviji `.exe` preko postojeceg - prepozna staru
+instalaciju i zameni je. Podesavanja i omiljene ostaju (`%APPDATA%\KvizRadio`).
+
+**Uklanjanje:** Settings -> Apps -> Installed apps -> **KvizRadio** ->
+Uninstall. Folder `%APPDATA%\KvizRadio` ostaje; obrisi ga rucno ako hoces i
+podesavanja da nestanu.
+
+### Linux (Debian / Ubuntu)
+
+1. Sa [Releases](https://github.com/neonknight4/8x8-Media-Player/releases/latest)
+   skini `kvizradio_<verzija>_amd64.deb` (~35 MB).
+2. Instaliraj iz foldera gde je fajl. `./` ispred imena mora - bez njega apt
+   trazi paket u repozitorijumu, ne fajl:
+
+   ```bash
+   cd ~/Downloads
+   sudo apt install ./kvizradio_*_amd64.deb
+   ```
+
+   apt sam povuce `vlc` ako ga nema.
+3. Pokretanje: meni -> **KvizRadio**, ili iz terminala
+   `/opt/kvizradio/bin/KvizRadio`.
+
+Paket je gradjen na Ubuntu 24.04; na starijim izdanjima (22.04) ne mora da
+prodje, jer `Depends` nosi imena paketa sa 24.04 (vidi *Linux instaler*).
+
+**Prepoznavanje pesme (opciono).** Naziv pesme iz samog strima radi i bez
+ovoga; ovo treba samo za dugme PREPOZNAJ i stanice koje naziv ne salju.
+`postavi-shazam.sh` nije u `.deb`-u, skida se iz repoa:
+
+```bash
+sudo apt install python3-venv ffmpeg
+curl -LO https://raw.githubusercontent.com/neonknight4/8x8-Media-Player/main/postavi-shazam.sh
+bash postavi-shazam.sh
+```
+
+Skripta napravi venv u `~/.config/KvizRadio/venv`, gde ga aplikacija sama
+nadje - u konfiguraciji se ne upisuje nista.
+
+**Nova verzija:** isto kao instalacija, `sudo apt install ./kvizradio_<nova>_amd64.deb`.
+Verzija mora biti veca od instalirane. Podesavanja ostaju (`~/.config/KvizRadio`).
+
+**Uklanjanje:**
+
+```bash
+sudo apt remove kvizradio
+```
+
+`~/.config/KvizRadio` (podesavanja, omiljene, venv za Shazam) ostaje; obrisi
+ga rucno ako hoces sve da nestane.
 
 ## Naziv pesme
 
