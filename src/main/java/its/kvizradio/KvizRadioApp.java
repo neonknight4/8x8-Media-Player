@@ -32,6 +32,7 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
@@ -48,6 +49,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
@@ -186,9 +188,11 @@ public class KvizRadioApp extends Application {
 
         stage.setTitle("KvizRadio " + Alati.verzija());
         stage.getIcons().addAll(ikone());
-        // spektar je usao izmedju levog bloka i jacine, a desno stoji plejlista
-        stage.setMinWidth(1280);
-        stage.setMinHeight(640);
+        // spektar je usao izmedju levog bloka i jacine, a desno stoji plejlista;
+        // na manjem ekranu minimum ne sme da izgura prozor van njega
+        Rectangle2D ekran = Screen.getPrimary().getVisualBounds();
+        stage.setMinWidth(Math.min(1280, ekran.getWidth()));
+        stage.setMinHeight(Math.min(640, ekran.getHeight()));
         stage.setScene(scena);
         stage.setOnCloseRequest(e -> {
             Podesavanja.snimiStanje(bar.jacina(), izabrana == null ? null : izabrana.uJson(),
@@ -200,6 +204,7 @@ public class KvizRadioApp extends Application {
             player.oslobodi();
         });
         stage.show();
+        uklopiUEkran(stage, ekran);
 
         sidebar.broj("Omiljene", omiljene.sve().size());
         sidebar.broj("Sakrivene", sakrivene.sve().size());
@@ -208,6 +213,24 @@ public class KvizRadioApp extends Application {
         zabelezi("KvizRadio " + Alati.verzija() + " - spreman" + trajanjePokretanja());
         // posle prikaza prozora: kes plugina ubrzava tek SLEDECE pokretanje
         VlcKes.osveziUPozadini(this::zabelezi);
+    }
+
+    /**
+     * Vraca prozor u radnu povrsinu ekrana (bez trake zadataka).
+     *
+     * Scena 1440x820 je odmerena za 1920x1080 na 100%. Sa skaliranjem 125% isti
+     * ekran je za JavaFX 1536x816, pa je prozor sa naslovnom trakom visi od
+     * ekrana: JavaFX ga centrira, naslovna traka ode iznad gornje ivice (ne moze
+     * da se uhvati misem), a donji bar sa PLAY ispod trake zadataka. Okvir
+     * prozora se zna tek posle show(), pa se tek tada i smanjuje.
+     */
+    private static void uklopiUEkran(Stage stage, Rectangle2D ekran) {
+        double w = Math.min(stage.getWidth(), ekran.getWidth());
+        double h = Math.min(stage.getHeight(), ekran.getHeight());
+        stage.setWidth(w);
+        stage.setHeight(h);
+        stage.setX(Math.max(ekran.getMinX(), Math.min(stage.getX(), ekran.getMaxX() - w)));
+        stage.setY(Math.max(ekran.getMinY(), Math.min(stage.getY(), ekran.getMaxY() - h)));
     }
 
     /** Od pokretanja procesa do prikazanog prozora, za log (" za 1.8 s"). */
